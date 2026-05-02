@@ -103,13 +103,16 @@ test.describe('Real-write push (mocked)', () => {
       );
     });
 
+    page.on('console', (m) => console.log('[browser]', m.type(), m.text()));
+    page.on('pageerror', (e) => console.log('[browser-error]', e.message));
+
     await page.goto('/');
     await expect(page.locator('table.items')).toBeVisible({ timeout: 10000 });
 
     // Stage a status edit on the first row.
     const row = page.locator('table.items tbody tr').first();
     await row.locator('td').nth(8).click();
-    await row.locator('.cell-editor select[aria-label="Status"]').selectOption('approved');
+    await row.locator('.cell-editor select[aria-label="Status"]').selectOption('clarified');
 
     // Open Push dialog and confirm
     await page.getByTestId('push-changes').click();

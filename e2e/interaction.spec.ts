@@ -51,7 +51,7 @@ test('records dry-run push flow', async ({ page }) => {
     await row.locator('td').nth(8).click();
     await page.waitForTimeout(250);
     const dropdown = row.locator('.cell-editor select[aria-label="Status"]');
-    await dropdown.selectOption('approved');
+    await dropdown.selectOption('clarified');
     await page.waitForTimeout(250);
   }
 

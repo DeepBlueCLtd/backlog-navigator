@@ -93,7 +93,7 @@ test.describe('Backlog Navigator — Story 1 evidence', () => {
       // The cell editor's <select> is inside the row; pick that one (not the
       // FilterBar's Status filter which shares aria-label="Status").
       const dropdown = row.locator('.cell-editor select[aria-label="Status"]');
-      await dropdown.selectOption('approved');
+      await dropdown.selectOption('clarified');
     }
 
     // Wait for footer to update.
