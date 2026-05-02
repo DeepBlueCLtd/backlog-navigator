@@ -6,19 +6,20 @@
   --bg-alt: #f6f8fa;
   --bg-card: #ffffff;
   --fg: #1f2328;
-  --fg-muted: #59636e;
-  --border: #d0d7de;
-  --accent: #0969da;
+  /* Muted colours pass WCAG AA (4.5:1 against white). */
+  --fg-muted: #4a5159;
+  --border: #b3bbc4;
+  --accent: #0550ae;
   --accent-fg: #ffffff;
   --warn-bg: #fff8c5;
-  --warn-fg: #6f5d20;
+  --warn-fg: #5a4b00;
   --error-bg: #ffebe9;
   --error-fg: #82071e;
   --success-bg: #dafbe1;
-  --success-fg: #1a7f37;
+  --success-fg: #14532d;
   --row-edited-bg: #fff8c5;
   --row-edited-cell-bg: #fff1a8;
-  --strikethrough-fg: #8a8a8a;
+  --strikethrough-fg: #6e747c;
   --font-system: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: 'SF Mono', Menlo, Consolas, monospace;
 }
