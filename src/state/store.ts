@@ -24,7 +24,7 @@ import { readEnvelope, writeEnvelope, clearEnvelope } from './persistence';
 // ─── View state ──────────────────────────────────────────────────────────
 
 export type SortKey = 'id' | 'total' | 'updated' | 'created';
-export type SortDirection = 'asc' | 'desc';
+export type SortAxis = 'asc' | 'desc';
 
 export interface StructuredFilters {
   status: string | null;
@@ -35,7 +35,7 @@ export interface StructuredFilters {
 
 export interface ViewState {
   sortKey: SortKey;
-  sortDir: SortDirection;
+  sortDir: SortAxis;
   filters: StructuredFilters;
   freeText: string;
   groupByEpic: boolean;

@@ -1,3 +1,9 @@
+const { rules: utilsDriftRules } = require('../../shared/eslint-rules/no-redeclare-utils-exports.cjs');
+const { rules: schemasDriftRules } = require('../../shared/eslint-rules/no-redeclare-schemas-exports.cjs');
+const { rules: componentsDriftRules } = require('../../shared/eslint-rules/no-redeclare-components-exports.cjs');
+const { rules: sessionStateDriftRules } = require('../../shared/eslint-rules/no-redeclare-session-state-exports.cjs');
+const { rules: dataDriftRules } = require('../../shared/eslint-rules/no-redeclare-data-exports.cjs');
+
 module.exports = {
   root: true,
   env: {
@@ -38,5 +44,13 @@ module.exports = {
       },
     ],
     '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
+    'no-restricted-syntax': [
+      'error',
+      ...utilsDriftRules,
+      ...schemasDriftRules,
+      ...componentsDriftRules,
+      ...sessionStateDriftRules,
+      ...dataDriftRules,
+    ],
   },
 };
