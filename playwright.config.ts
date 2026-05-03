@@ -1,7 +1,8 @@
-import { defineConfig } from '@playwright/test';
+import { defineConfig, devices } from '@playwright/test';
 import { readFileSync, existsSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
+import { IPHONE, IPAD_PORTRAIT, IPAD_LANDSCAPE } from './e2e/helpers/viewports';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -52,6 +53,32 @@ export default defineConfig({
     viewport: { width: 1280, height: 720 },
     launchOptions,
   },
+  // Per-viewport projects for #244 mobile parity (FR-021).
+  // Existing desktop specs run under the default project; mobile specs run
+  // under the three named projects so a single `pnpm test:e2e mobile/`
+  // exercises all three viewports.
+  projects: [
+    {
+      name: 'desktop',
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 720 } },
+      testIgnore: /mobile\//,
+    },
+    {
+      name: 'mobile-iphone',
+      use: { ...devices['Desktop Chrome'], viewport: IPHONE, hasTouch: true },
+      testMatch: /mobile\//,
+    },
+    {
+      name: 'tablet-portrait',
+      use: { ...devices['Desktop Chrome'], viewport: IPAD_PORTRAIT, hasTouch: true },
+      testMatch: /mobile\//,
+    },
+    {
+      name: 'tablet-landscape',
+      use: { ...devices['Desktop Chrome'], viewport: IPAD_LANDSCAPE, hasTouch: true },
+      testMatch: /mobile\//,
+    },
+  ],
   webServer: {
     command: 'pnpm preview --port 5175',
     url: 'http://localhost:5175',

@@ -287,3 +287,51 @@ export interface CredentialEnvelope {
   scopes: string[];
   login?: string;
 }
+
+// ─── Mobile UI state shapes (#244) ──────────────────────────────────────────
+
+/** Layout selection. Computed from `useIsMobile(1023)` — `mobile` when the
+ *  viewport is < 1024 px. Pure derived value; never persisted. */
+export type MobileLayoutMode = 'desktop' | 'mobile';
+
+/** Which editor a bottom sheet currently hosts. */
+export type BottomSheetEditorKind =
+  | 'status'
+  | 'category'
+  | 'epic'
+  | 'score-V'
+  | 'score-M'
+  | 'score-A';
+
+/** Bottom-sheet state. Lives in EditorOverlayContext at App root, NOT in
+ *  component-local useState (Review §Issue 1A — survive layout-mode crossing). */
+export type BottomSheetState =
+  | { open: false }
+  | {
+      open: true;
+      itemId: ItemId;
+      editorKind: BottomSheetEditorKind;
+      pendingValue: CellValue;
+      originalValue: CellValue;
+      dirty: boolean;
+    };
+
+/** Full-screen Markdown editor state. Same scope as BottomSheetState — lives
+ *  in EditorOverlayContext (Review §Issue 1A). */
+export type DescriptionEditorState =
+  | { open: false }
+  | {
+      open: true;
+      itemId: ItemId;
+      rawMarkdown: string;
+      originalMarkdown: string;
+    };
+
+/** Service-worker update lifecycle, surfaced from registerSW.ts. */
+export type ServiceWorkerUpdateState =
+  | { kind: 'up-to-date' }
+  | { kind: 'update-available'; reload: () => Promise<void> }
+  | { kind: 'updating' };
+
+/** Read-only signal of PWA install posture. */
+export type PWAInstallState = 'not-installed' | 'installable' | 'installed';

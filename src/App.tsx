@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useIsMobile } from '@debrief/components/hooks/useIsMobile';
 import { StoreProvider, useStore, useStoreState } from './state/store';
 import { detectDeploymentMode, detectPrNumber } from './state/deploymentMode';
 import { getPullRequest, readBacklogMd, configureClient } from './github/api';
@@ -14,6 +15,11 @@ import { DryRunBanner } from './components/DryRunBanner';
 import { PRModeBanner } from './components/PRModeBanner';
 import { StatusBanner } from './components/StatusBanner';
 import { AuthPrompt } from './components/AuthPrompt';
+import { EditorOverlayProvider } from './editors/EditorOverlayProvider';
+import { CardList } from './components/mobile/CardList';
+import { UpdatePrompt } from './pwa/UpdatePrompt';
+
+const MOBILE_BREAKPOINT_MAX = 1023;
 
 interface PrMeta {
   number: number;
@@ -26,7 +32,10 @@ export function App(): JSX.Element {
   const api = useStoreState();
   return (
     <StoreProvider value={api}>
-      <AppShell />
+      <EditorOverlayProvider>
+        <UpdatePrompt />
+        <AppShell />
+      </EditorOverlayProvider>
     </StoreProvider>
   );
 }
@@ -34,6 +43,7 @@ export function App(): JSX.Element {
 function AppShell(): JSX.Element {
   const api = useStore();
   const { state, setState, persistenceWarning, projected } = api;
+  const isMobile = useIsMobile(MOBILE_BREAKPOINT_MAX);
 
   const deploymentMode = detectDeploymentMode(window.location.search);
   const prNumber = detectPrNumber(window.location.search);
@@ -125,16 +135,25 @@ function AppShell(): JSX.Element {
       {state.status === 'error' ? <StatusBanner kind="error">{state.error}</StatusBanner> : null}
 
       {state.status === 'loaded' && projected ? (
-        <>
-          <FilterBar doc={projected} />
-          <ItemsTable
-            doc={projected}
-            baseline={state.baseline}
-            authed={authed || deploymentMode === 'dry-run'}
-            onAuthRequired={onAuthRequired}
-          />
-          <PendingFooter onPushChanges={() => setShowPushDialog(true)} />
-        </>
+        isMobile ? (
+          <>
+            {/* Phase 3 (#244 T037/T038) replaces this with <MobileFilterBar /> + <CardList /> wired to the projected doc. */}
+            <FilterBar doc={projected} />
+            <CardList doc={projected} />
+            <PendingFooter onPushChanges={() => setShowPushDialog(true)} />
+          </>
+        ) : (
+          <>
+            <FilterBar doc={projected} />
+            <ItemsTable
+              doc={projected}
+              baseline={state.baseline}
+              authed={authed || deploymentMode === 'dry-run'}
+              onAuthRequired={onAuthRequired}
+            />
+            <PendingFooter onPushChanges={() => setShowPushDialog(true)} />
+          </>
+        )
       ) : null}
 
       {showPushDialog ? (

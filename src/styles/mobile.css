@@ -1,0 +1,281 @@
+/*
+ * Mobile-only styles for the Backlog Navigator (#244).
+ *
+ * Scope: every rule lives inside `@media (max-width: 1023px)` so the
+ * existing desktop layout (≥ 1024px) is byte-identical post-#244 (FR-023).
+ *
+ * Highlights:
+ *   - Card-list layout (CSS grid).
+ *   - Bottom-sheet positioning + safe-area padding (env(safe-area-inset-*)).
+ *   - 44×44 minimum tap targets (FR-008).
+ *   - Sticky push bar with home-bar safe-area padding.
+ *
+ * Phase 2 ships the structural rules; Phases 3–6 bring the components
+ * that consume them, and may add small refinements at that point.
+ */
+
+@media (max-width: 1023px) {
+  .app-shell {
+    padding: 0;
+  }
+
+  /* ─── Card list ─────────────────────────────────────────────────────── */
+
+  .card-list-placeholder,
+  [data-testid='card-list'] {
+    padding: 8px 8px 96px 8px; /* bottom padding clears sticky push bar */
+  }
+
+  .item-card {
+    background: var(--card-bg, #ffffff);
+    border: 1px solid var(--card-border, #e0e0e0);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 8px;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas:
+      'id    desc   score'
+      'meta  meta   meta'
+      'date  date   live';
+    gap: 6px 8px;
+    min-height: 44px;
+  }
+
+  .item-card[data-strikethrough='true'] .item-card-description {
+    text-decoration: line-through;
+    color: var(--strikethrough-color, #888);
+  }
+
+  .item-card .chip,
+  .item-card button {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 14px;
+  }
+
+  /* Hide the desktop table headers on mobile — defensive in case App.tsx
+     branches incompletely during a Phase 3 transition. */
+  .items-table {
+    display: none;
+  }
+
+  /* ─── Bottom sheet ──────────────────────────────────────────────────── */
+
+  .bottom-sheet-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 100;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+  }
+
+  .bottom-sheet {
+    width: 100%;
+    max-width: 600px;
+    background: var(--sheet-bg, #ffffff);
+    border-radius: 16px 16px 0 0;
+    padding: 16px 16px calc(16px + env(safe-area-inset-bottom)) 16px;
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.15);
+    transform: translateY(0);
+    transition: transform 200ms ease-out;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+
+  .bottom-sheet[data-state='dismissing'] {
+    transform: translateY(100%);
+  }
+
+  .bottom-sheet-handle {
+    width: 36px;
+    height: 4px;
+    background: #cccccc;
+    border-radius: 2px;
+    margin: 0 auto 12px auto;
+  }
+
+  .bottom-sheet-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+
+  .bottom-sheet-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  .bottom-sheet-cancel,
+  .bottom-sheet-save {
+    min-height: 44px;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 14px;
+  }
+
+  /* ─── Description editor (full screen) ──────────────────────────────── */
+
+  .description-editor-screen {
+    position: fixed;
+    inset: 0;
+    background: var(--sheet-bg, #ffffff);
+    z-index: 110;
+    display: flex;
+    flex-direction: column;
+    padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom) 0;
+  }
+
+  .description-editor-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--card-border, #e0e0e0);
+  }
+
+  .description-editor-textarea {
+    flex: 1;
+    border: none;
+    padding: 12px 16px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 14px;
+    line-height: 1.4;
+    outline: none;
+    resize: none;
+    width: 100%;
+  }
+
+  /* ─── Sticky push bar ───────────────────────────────────────────────── */
+
+  .sticky-push-bar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 90;
+    background: var(--push-bar-bg, #1f1f1f);
+    color: #ffffff;
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom)) 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.15);
+  }
+
+  .sticky-push-bar[data-state='conflict'] {
+    background: var(--push-bar-error-bg, #c62828);
+  }
+
+  .sticky-push-bar-button {
+    min-height: 44px;
+    padding: 8px 16px;
+    border-radius: 4px;
+    background: #ffffff;
+    color: #1f1f1f;
+    font-weight: 600;
+    border: none;
+  }
+
+  /* ─── Discard-confirm modal (used by both editors) ──────────────────── */
+
+  .discard-confirm-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+
+  .discard-confirm-dialog {
+    background: var(--sheet-bg, #ffffff);
+    border-radius: 12px;
+    padding: 16px;
+    max-width: 320px;
+    width: 100%;
+  }
+
+  .discard-confirm-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 16px;
+  }
+
+  .discard-confirm-actions button {
+    min-height: 44px;
+    padding: 8px 16px;
+    border-radius: 4px;
+    border: 1px solid var(--card-border, #e0e0e0);
+    background: var(--sheet-bg, #ffffff);
+  }
+
+  .discard-confirm-save {
+    background: #1f1f1f !important;
+    color: #ffffff !important;
+  }
+
+  .discard-confirm-discard {
+    color: #c62828;
+  }
+
+  /* ─── Empty / loading / offline states ──────────────────────────────── */
+
+  .card-list-empty,
+  .card-list-offline {
+    padding: 32px 16px;
+    text-align: center;
+    color: var(--muted-color, #666);
+  }
+}
+
+/*
+ * Discard-confirm desktop styles (≥ 1024 px) — the modal is reused by the
+ * cross-mode rotation guard, which can fire on tablet rotation. Keep the
+ * desktop look minimal but functional.
+ */
+@media (min-width: 1024px) {
+  .discard-confirm-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+
+  .discard-confirm-dialog {
+    background: var(--sheet-bg, #ffffff);
+    border-radius: 8px;
+    padding: 16px;
+    max-width: 360px;
+    width: 100%;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  }
+
+  .discard-confirm-actions {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    margin-top: 16px;
+    justify-content: flex-end;
+  }
+
+  .discard-confirm-actions button {
+    padding: 8px 16px;
+    border-radius: 4px;
+    border: 1px solid var(--card-border, #e0e0e0);
+    background: var(--sheet-bg, #ffffff);
+  }
+}
