@@ -15,11 +15,14 @@
     "lint": "eslint src --ext .ts,.tsx"
   },
   "dependencies": {
+    "@debrief/components": "workspace:*",
+    "@tanstack/react-virtual": "^3.0.0",
     "diff": "^5.2.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-markdown": "^9.0.1",
     "remark-gfm": "^4.0.0",
+    "workbox-window": "^7.1.0",
     "zod": "^3.22.0"
   },
   "devDependencies": {
@@ -40,6 +43,7 @@
     "jsdom": "^28.0.0",
     "typescript": "^5.3.0",
     "vite": "^5.0.0",
+    "vite-plugin-pwa": "^0.20.5",
     "vitest": "^1.0.0"
   }
 }
