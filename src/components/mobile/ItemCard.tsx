@@ -1,7 +1,8 @@
-import { type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import type { BacklogItem } from '../../types';
 import { useEditorOverlay } from '../../editors/EditorOverlayContext';
 import { useStore } from '../../state/store';
+import { speckitClipboardString } from '../../state/speckitCommand';
 
 interface ItemCardProps {
   item: BacklogItem;
@@ -142,8 +143,56 @@ export function ItemCard({ item, dirty }: ItemCardProps): JSX.Element {
           {item.epic ?? '—'}
         </button>
         <span className="item-card-updated">updated {item.updated}</span>
+        <CopySpeckitCommandButton item={item} />
       </div>
     </article>
+  );
+}
+
+/**
+ * Status-sensitive "copy speckit command" button. Mapping is:
+ *   needs-interview / proposed → /speckit.start <id>
+ *   approved                  → /speckit.specify <id>
+ *   specified                 → /speckit.clarify <id>
+ *   clarified                 → /speckit.plan <id>
+ *   planned                   → /speckit.review <id>
+ *   tasked                    → /speckit.implement <id>
+ *   implementing / blocked    → /speckit.implement <id>
+ *   complete / parked / rejected → button hidden (terminal status)
+ *
+ * Click → writes the command to the clipboard via `navigator.clipboard.writeText`.
+ * Briefly flips to a "Copied!" label for visual feedback.
+ */
+function CopySpeckitCommandButton({ item }: { item: BacklogItem }): JSX.Element | null {
+  const command = speckitClipboardString(item.status, item.id as unknown as number);
+  const [copied, setCopied] = useState(false);
+  if (!command) return null;
+  const onClick = async (e: React.MouseEvent): Promise<void> => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(command);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Some browsers refuse clipboard.write outside a user-gesture context;
+      // ours runs from a click handler so this should never trigger, but
+      // surface a console error per Article I.3 if it does.
+      // eslint-disable-next-line no-console
+      console.warn('[backlog-nav] clipboard write failed for', command);
+    }
+  };
+  return (
+    <button
+      type="button"
+      className="chip item-card-copy-command"
+      data-testid="copy-speckit-command"
+      data-command={command}
+      onClick={onClick}
+      title={`Copy: ${command}`}
+      aria-label={`Copy speckit command: ${command}`}
+    >
+      {copied ? '✓ Copied' : '📋 Copy cmd'}
+    </button>
   );
 }
 

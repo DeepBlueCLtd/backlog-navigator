@@ -117,4 +117,27 @@ describe('ItemCard', () => {
     expect(desc.textContent?.length).toBeLessThan(250);
     expect(desc.textContent?.endsWith('…')).toBe(true);
   });
+
+  it('renders the copy-speckit-command button with status-sensitive command', () => {
+    renderCard(makeItem({ status: 'implementing' }));
+    const btn = screen.getByTestId('copy-speckit-command');
+    expect(btn.getAttribute('data-command')).toBe('/speckit.implement 244');
+  });
+
+  it('copy button maps approved → /speckit.specify <id>', () => {
+    renderCard(makeItem({ status: 'approved' }));
+    const btn = screen.getByTestId('copy-speckit-command');
+    expect(btn.getAttribute('data-command')).toBe('/speckit.specify 244');
+  });
+
+  it('copy button maps proposed → /speckit.start <id>', () => {
+    renderCard(makeItem({ status: 'proposed' }));
+    const btn = screen.getByTestId('copy-speckit-command');
+    expect(btn.getAttribute('data-command')).toBe('/speckit.start 244');
+  });
+
+  it('copy button is hidden for terminal statuses', () => {
+    renderCard(makeItem({ status: 'complete' }));
+    expect(screen.queryByTestId('copy-speckit-command')).toBeNull();
+  });
 });

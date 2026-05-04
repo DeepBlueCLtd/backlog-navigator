@@ -17,6 +17,7 @@ import {
   type EditorOverlayContextValue,
 } from './EditorOverlayContext';
 import { BottomSheetEditor } from '../components/mobile/BottomSheetEditor';
+import { DescriptionEditorScreen } from '../components/mobile/DescriptionEditorScreen';
 
 const MOBILE_BREAKPOINT_MAX = 1023;
 
@@ -342,6 +343,7 @@ export function EditorOverlayProvider({
     <EditorOverlayContext.Provider value={value}>
       {children}
       <BottomSheetEditor />
+      <DescriptionEditorScreen />
       {discardPrompt.open ? <DiscardConfirmModal /> : null}
     </EditorOverlayContext.Provider>
   );

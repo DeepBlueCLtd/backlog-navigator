@@ -56,6 +56,17 @@
     font-size: 14px;
   }
 
+  .item-card .item-card-copy-command {
+    margin-left: auto;
+    font-size: 13px;
+    background: var(--copy-cmd-bg, #f0f0f0);
+    border: 1px solid var(--card-border, #e0e0e0);
+    cursor: pointer;
+  }
+  .item-card .item-card-copy-command[data-status='copied'] {
+    background: var(--copy-cmd-success-bg, #c8e6c9);
+  }
+
   /* Hide the desktop table headers on mobile — defensive in case App.tsx
      branches incompletely during a Phase 3 transition. */
   .items-table {
