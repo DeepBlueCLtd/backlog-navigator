@@ -134,7 +134,20 @@ function AppShell(): JSX.Element {
       {state.status === 'loading' ? (
         <StatusBanner kind="info">{strings.app.loading}</StatusBanner>
       ) : null}
-      {state.status === 'error' ? <StatusBanner kind="error">{state.error}</StatusBanner> : null}
+      {state.status === 'error' && !(isMobile && typeof navigator !== 'undefined' && navigator.onLine === false) ? (
+        <StatusBanner kind="error">{state.error}</StatusBanner>
+      ) : null}
+      {/*
+       * FR-019 — when the load fails AND we're on mobile AND offline, swap
+       * the generic error banner for the in-card-list "Backlog data
+       * unavailable" empty state. That keeps the messaging in the
+       * card-list area as the spec requires.
+       */}
+      {state.status === 'error' && isMobile && typeof navigator !== 'undefined' && navigator.onLine === false ? (
+        <div className="card-list-offline" data-testid="offline-empty-state" role="status">
+          <p>Backlog data unavailable — you&apos;re offline. Reconnect to load items.</p>
+        </div>
+      ) : null}
 
       {state.status === 'loaded' && projected ? (
         isMobile ? (

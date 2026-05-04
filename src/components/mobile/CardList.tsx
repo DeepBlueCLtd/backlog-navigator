@@ -50,7 +50,7 @@ export function CardList({ doc }: CardListProps): JSX.Element {
   if (docHasZeroItems && isOffline) {
     return (
       <div className="card-list-offline" data-testid="offline-empty-state" role="status">
-        <p>Backlog data unavailable — you're offline. Reconnect to load items.</p>
+        <p>Backlog data unavailable — you&apos;re offline. Reconnect to load items.</p>
       </div>
     );
   }

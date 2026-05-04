@@ -38,9 +38,12 @@ async function mockGithubBacklogFetch(page: Page): Promise<void> {
  * and the manual-test log.
  */
 test.describe('Backlog Navigator — PWA offline + standalone (US5 AS2/AS3)', () => {
-  test.skip(({ browserName: _b }, testInfo) => {
-    return testInfo.project.name !== 'mobile-iphone';
-  }, 'PWA offline spec only meaningful at the iPhone viewport.');
+  test.beforeEach(({}, testInfo) => {
+    test.skip(
+      testInfo.project.name !== 'mobile-iphone',
+      'PWA offline spec only meaningful at the iPhone viewport.',
+    );
+  });
 
   test('offline launch with no cached data renders the offline empty state', async ({ page, context }) => {
     // Block ALL network so the parser produces an empty doc.

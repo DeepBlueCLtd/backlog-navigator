@@ -43,9 +43,12 @@ async function mockGithubBacklogFetch(page: Page): Promise<void> {
  * (Review §Issue 3A).
  */
 test.describe('Backlog Navigator — mobile push (US4)', () => {
-  test.skip(({ browserName: _b }, testInfo) => {
-    return testInfo.project.name !== 'mobile-iphone';
-  }, 'Push spec only meaningful at the iPhone viewport.');
+  test.beforeEach(({}, testInfo) => {
+    test.skip(
+      testInfo.project.name !== 'mobile-iphone',
+      'Push spec only meaningful at the iPhone viewport.',
+    );
+  });
 
   test('sticky push bar is hidden when no dirty edits (FR-010)', async ({ page }) => {
     await mockGithubBacklogFetch(page);

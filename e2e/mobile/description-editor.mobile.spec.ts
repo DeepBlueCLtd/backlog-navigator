@@ -37,9 +37,12 @@ async function mockGithubBacklogFetch(page: Page): Promise<void> {
  * coverage is sufficient (Review §Issue 3A).
  */
 test.describe('Backlog Navigator — mobile description editor (US3)', () => {
-  test.skip(({ browserName: _b }, testInfo) => {
-    return testInfo.project.name !== 'mobile-iphone';
-  }, 'Description-editor spec only meaningful at the iPhone viewport.');
+  test.beforeEach(({}, testInfo) => {
+    test.skip(
+      testInfo.project.name !== 'mobile-iphone',
+      'Description-editor spec only meaningful at the iPhone viewport.',
+    );
+  });
 
   test('tap Description region → full-screen editor opens with raw Markdown', async ({ page }) => {
     await mockGithubBacklogFetch(page);
