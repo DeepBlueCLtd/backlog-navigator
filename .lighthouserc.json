@@ -1,0 +1,27 @@
+{
+  "ci": {
+    "collect": {
+      "url": ["http://localhost:5175/"],
+      "numberOfRuns": 3,
+      "settings": {
+        "preset": "desktop",
+        "throttling": {
+          "rttMs": 40,
+          "throughputKbps": 10240,
+          "cpuSlowdownMultiplier": 1
+        },
+        "skipAudits": ["uses-http2"]
+      }
+    },
+    "assert": {
+      "assertions": {
+        "categories:pwa": ["error", { "minScore": 0.9 }],
+        "installable-manifest": "error",
+        "service-worker": "error"
+      }
+    },
+    "upload": {
+      "target": "temporary-public-storage"
+    }
+  }
+}

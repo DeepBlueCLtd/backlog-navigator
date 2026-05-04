@@ -249,6 +249,46 @@
   }
 }
 
+/* PWA update banner — applies to both mobile and desktop. Sits at the
+ * top of the viewport so it's discoverable regardless of scroll
+ * position. Fades back in if dismissed and a new SW lifecycle starts. */
+.pwa-update-banner {
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 150;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px calc(12px + env(safe-area-inset-top, 0)) 16px;
+  background: var(--update-banner-bg, #2962ff);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.pwa-update-banner-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.pwa-update-banner button {
+  min-height: 44px;
+  padding: 8px 16px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: transparent;
+  color: #ffffff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pwa-update-banner .pwa-update-reload {
+  background: #ffffff;
+  color: #2962ff;
+  border-color: #ffffff;
+}
+
 /*
  * Discard-confirm desktop styles (≥ 1024 px) — the modal is reused by the
  * cross-mode rotation guard, which can fire on tablet rotation. Keep the

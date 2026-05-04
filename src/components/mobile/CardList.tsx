@@ -40,6 +40,21 @@ export function CardList({ doc }: CardListProps): JSX.Element {
 
   if (doc === null) return <></>;
 
+  // Offline empty state (FR-019). Only shown when:
+  //   1. There are no items at all (parser produced nothing AND filters are
+  //      not the cause), AND
+  //   2. The browser reports offline.
+  // Otherwise the standard empty-filter state below is shown.
+  const docHasZeroItems = doc.items.length === 0;
+  const isOffline = typeof navigator !== 'undefined' && navigator.onLine === false;
+  if (docHasZeroItems && isOffline) {
+    return (
+      <div className="card-list-offline" data-testid="offline-empty-state" role="status">
+        <p>Backlog data unavailable — you're offline. Reconnect to load items.</p>
+      </div>
+    );
+  }
+
   if (items.length === 0) {
     return (
       <div className="card-list-empty" data-testid="card-list-empty">
