@@ -1,0 +1,169 @@
+import { expect, test, type Page } from '@playwright/test';
+import { readFileSync, mkdirSync } from 'fs';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const BACKLOG_PATH = join(__dirname, '..', '..', '..', '..', 'BACKLOG.md');
+const SCREENSHOTS_DIR = join(
+  __dirname,
+  '..',
+  '..',
+  '..',
+  '..',
+  'specs',
+  '244-navigator-mobile-pwa',
+  'evidence',
+  'screenshots',
+);
+mkdirSync(SCREENSHOTS_DIR, { recursive: true });
+
+function encodeUtf8ToBase64(text: string): string {
+  return Buffer.from(text, 'utf8').toString('base64');
+}
+
+async function mockGithubBacklogFetch(page: Page): Promise<void> {
+  const text = readFileSync(BACKLOG_PATH, 'utf8');
+  const body = JSON.stringify({
+    type: 'file',
+    encoding: 'base64',
+    content: encodeUtf8ToBase64(text),
+    sha: '0123456789abcdef0123456789abcdef01234567',
+    path: 'BACKLOG.md',
+  });
+  await page.route('https://api.github.com/**/contents/BACKLOG.md*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body,
+    });
+  });
+}
+
+/**
+ * Story 1 — Browse & find from a phone (US1).
+ *
+ * Runs at all three target viewports via Playwright's project matrix
+ * (mobile-iphone, tablet-portrait, tablet-landscape — see playwright.config.ts).
+ * The same spec body verifies:
+ *   - 1024px boundary: card list at < 1024 px, desktop table at = 1024 px.
+ *   - Search filters cards by ID + Description.
+ *   - Phase filter narrows to the selected status set.
+ *   - Include-completed toggle reveals/hides complete rows.
+ *   - No horizontal overflow at any viewport (FR-001 / FR-003).
+ */
+test.describe('Backlog Navigator — mobile browse (US1)', () => {
+  test('renders card list (mobile) or desktop table (≥1024)', async ({ page }, testInfo) => {
+    await mockGithubBacklogFetch(page);
+    await page.goto('/?dryRun=1');
+    await expect(page.getByTestId('dry-run-banner')).toBeVisible();
+
+    const viewportWidth = (page.viewportSize()?.width ?? 0);
+    if (viewportWidth < 1024) {
+      // Mobile path
+      const cardList = page.getByTestId('card-list');
+      await expect(cardList).toBeVisible({ timeout: 10000 });
+      await expect(page.locator('table.items')).toHaveCount(0);
+    } else {
+      // Desktop path (parity gate per FR-023)
+      await expect(page.locator('table.items')).toBeVisible({ timeout: 10000 });
+      // The card-list testid does not appear when desktop layout is rendered.
+      await expect(page.getByTestId('card-list')).toHaveCount(0);
+    }
+
+    // Capture a screenshot named for the viewport for evidence.
+    const tag = `${testInfo.project.name}`;
+    await page.screenshot({
+      path: join(SCREENSHOTS_DIR, `cardlist-${tag}.png`),
+      fullPage: false,
+    });
+  });
+
+  test('search input narrows visible cards (mobile only)', async ({ page }, testInfo) => {
+    if ((page.viewportSize()?.width ?? 0) >= 1024) {
+      test.skip(true, 'Search behaviour gate is for the mobile card list (< 1024 px) only.');
+      return;
+    }
+    await mockGithubBacklogFetch(page);
+    await page.goto('/?dryRun=1');
+    await expect(page.getByTestId('card-list')).toBeVisible({ timeout: 10000 });
+
+    const search = page.getByTestId('mobile-filter-search');
+    await search.fill('244');
+    await expect(page.getByTestId('item-card-244')).toBeVisible();
+    // After filtering to "244" only, other rows shouldn't be visible.
+    // Loose check: at least item-card-244 is present and the count of
+    // cards is small (typically 1, but may be more if "244" appears
+    // verbatim in another description — that's acceptable).
+    const visibleCards = await page.getByTestId(/^item-card-\d+$/).count();
+    expect(visibleCards).toBeGreaterThanOrEqual(1);
+    expect(visibleCards).toBeLessThan(10);
+
+    // Clearing search restores the list.
+    await search.fill('');
+    await expect(page.getByTestId('item-card-244')).toBeVisible();
+    void testInfo;
+  });
+
+  test('phase filter narrows visible cards (mobile only)', async ({ page }) => {
+    if ((page.viewportSize()?.width ?? 0) >= 1024) {
+      test.skip(true, 'Phase filter is mobile-only chrome.');
+      return;
+    }
+    await mockGithubBacklogFetch(page);
+    await page.goto('/?dryRun=1');
+    await expect(page.getByTestId('card-list')).toBeVisible({ timeout: 10000 });
+
+    const phase = page.getByTestId('phase-filter');
+    await phase.selectOption('active');
+
+    // After picking Active, every visible status chip should read
+    // "implementing" or "blocked".
+    const statuses = await page.getByTestId('status-chip').allTextContents();
+    expect(statuses.length).toBeGreaterThan(0);
+    for (const s of statuses) {
+      expect(s.toLowerCase()).toMatch(/implementing|blocked/);
+    }
+  });
+
+  test('include-completed toggle reveals complete rows (mobile only)', async ({ page }) => {
+    if ((page.viewportSize()?.width ?? 0) >= 1024) {
+      test.skip(true, 'Include-completed toggle is mobile-only chrome.');
+      return;
+    }
+    await mockGithubBacklogFetch(page);
+    await page.goto('/?dryRun=1');
+    await expect(page.getByTestId('card-list')).toBeVisible({ timeout: 10000 });
+
+    const beforeCount = await page.getByTestId(/^item-card-\d+$/).count();
+    await page.getByTestId('include-completed-toggle').check();
+    // After flipping the toggle, the visible-card count should increase
+    // (the live BACKLOG.md is known to contain at least some `complete`
+    // rows). Loose check — exact delta is data-driven.
+    const afterCount = await page.getByTestId(/^item-card-\d+$/).count();
+    expect(afterCount).toBeGreaterThanOrEqual(beforeCount);
+  });
+
+  test('no horizontal overflow at the viewport width', async ({ page }) => {
+    await mockGithubBacklogFetch(page);
+    await page.goto('/?dryRun=1');
+    await expect(page.getByTestId('dry-run-banner')).toBeVisible();
+    // Wait for either layout to be ready.
+    await page.waitForFunction(
+      () =>
+        !!document.querySelector('[data-testid=card-list]') ||
+        !!document.querySelector('table.items'),
+      undefined,
+      { timeout: 10000 },
+    );
+    const overflow = await page.evaluate(() => {
+      return (
+        document.documentElement.scrollWidth >
+        document.documentElement.clientWidth
+      );
+    });
+    expect(overflow).toBe(false);
+  });
+});

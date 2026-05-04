@@ -33,10 +33,36 @@ export interface StructuredFilters {
   complexity: string | null;
 }
 
+/**
+ * Phase grouping (FR-011). Mirrors the post-#243 desktop convention; if
+ * #243 ships an alternative grouping, this map is the single source of
+ * truth for both desktop and mobile.
+ */
+export type Phase = 'any' | 'triage' | 'ready' | 'active' | 'done';
+
+export const PHASE_STATUSES: Record<Exclude<Phase, 'any'>, string[]> = {
+  triage: ['needs-interview', 'proposed'],
+  ready: ['approved', 'specified', 'clarified', 'planned', 'tasked'],
+  active: ['implementing', 'blocked'],
+  done: ['complete'],
+};
+
 export interface ViewState {
   sortKey: SortKey;
   sortDir: SortAxis;
   filters: StructuredFilters;
+  /**
+   * FR-011 — coarse phase filter shown on mobile and (post-#243) on
+   * desktop. Optional/defaults to 'any' so existing desktop selectors
+   * remain unchanged when it isn't set.
+   */
+  phase: Phase;
+  /**
+   * FR-011 — include-completed toggle. Defaults to false (hide complete
+   * rows) so the navigator opens on Active/Triage by default.
+   * Forced true when phase === 'done'.
+   */
+  includeCompleted: boolean;
   freeText: string;
   groupByEpic: boolean;
   expandAllDescriptions: boolean;
@@ -44,9 +70,11 @@ export interface ViewState {
 }
 
 export const defaultView = (): ViewState => ({
-  sortKey: 'id',
+  sortKey: 'updated',
   sortDir: 'desc',
   filters: { status: null, category: null, epic: null, complexity: null },
+  phase: 'any',
+  includeCompleted: false,
   freeText: '',
   groupByEpic: false,
   expandAllDescriptions: false,
@@ -193,7 +221,26 @@ export function selectFilteredSortedItems(
   doc: BacklogDocument,
   view: ViewState,
 ): BacklogDocument['items'] {
+  // Phase mask. When phase=any AND includeCompleted=true → no implicit
+  // status filter (everything passes). When phase=any AND
+  // includeCompleted=false → exclude `complete`. When phase is anything
+  // else → match the phase's status set; if phase=done, includeCompleted
+  // is forced true to make the result non-empty (FR-011).
+  const phaseStatuses: Set<string> | null =
+    view.phase === 'any' ? null : new Set(PHASE_STATUSES[view.phase]);
+  const includeCompleted = view.phase === 'done' ? true : view.includeCompleted;
+
   const filtered = doc.items.filter((it) => {
+    if (phaseStatuses && !phaseStatuses.has(it.status)) return false;
+    // Hide complete rows when includeCompleted is off, UNLESS the user has
+    // explicitly opted in via the status dropdown (status=complete).
+    if (
+      !includeCompleted &&
+      it.status === 'complete' &&
+      view.filters.status !== 'complete'
+    ) {
+      return false;
+    }
     if (view.filters.status && it.status !== view.filters.status) return false;
     if (view.filters.category && it.category !== view.filters.category) return false;
     if (view.filters.complexity && it.complexity !== view.filters.complexity) return false;

@@ -17,6 +17,7 @@ import { StatusBanner } from './components/StatusBanner';
 import { AuthPrompt } from './components/AuthPrompt';
 import { EditorOverlayProvider } from './editors/EditorOverlayProvider';
 import { CardList } from './components/mobile/CardList';
+import { MobileFilterBar } from './components/mobile/MobileFilterBar';
 import { UpdatePrompt } from './pwa/UpdatePrompt';
 
 const MOBILE_BREAKPOINT_MAX = 1023;
@@ -137,8 +138,7 @@ function AppShell(): JSX.Element {
       {state.status === 'loaded' && projected ? (
         isMobile ? (
           <>
-            {/* Phase 3 (#244 T037/T038) replaces this with <MobileFilterBar /> + <CardList /> wired to the projected doc. */}
-            <FilterBar doc={projected} />
+            <MobileFilterBar />
             <CardList doc={projected} />
             <PendingFooter onPushChanges={() => setShowPushDialog(true)} />
           </>

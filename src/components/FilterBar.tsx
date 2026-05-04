@@ -102,6 +102,18 @@ export function FilterBar({ doc }: { doc: BacklogDocument }): JSX.Element {
         style={{ minWidth: 200 }}
       />
 
+      <label htmlFor="filter-include-completed" style={{ marginLeft: 8 }}>
+        <input
+          id="filter-include-completed"
+          type="checkbox"
+          checked={view.includeCompleted}
+          onChange={(e) =>
+            setView((v) => ({ ...v, includeCompleted: e.target.checked }))
+          }
+        />
+        Include completed
+      </label>
+
       <button
         onClick={() => setView((v) => ({ ...v, groupByEpic: !v.groupByEpic }))}
         aria-pressed={view.groupByEpic}
