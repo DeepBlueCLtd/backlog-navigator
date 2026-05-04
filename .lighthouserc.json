@@ -15,9 +15,11 @@
       }
     },
     "assert": {
-      "preset": "lighthouse:no-pwa",
       "assertions": {
-        "installable-manifest": ["warn", { "minScore": 1 }]
+        "installable-manifest": ["warn", { "minScore": 1 }],
+        "service-worker": ["warn", { "minScore": 1 }],
+        "viewport": ["error", { "minScore": 1 }],
+        "document-title": ["error", { "minScore": 1 }]
       }
     },
     "upload": {
