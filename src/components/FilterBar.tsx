@@ -143,7 +143,6 @@ export function FilterBar({ doc, onOpenSettings }: FilterBarProps): JSX.Element 
           onClick={onOpenSettings}
           aria-label={strings.auth.settingsAriaLabel}
           data-testid="open-settings"
-          style={{ marginLeft: 'auto' }}
         >
           {strings.auth.settingsButton}
         </button>
