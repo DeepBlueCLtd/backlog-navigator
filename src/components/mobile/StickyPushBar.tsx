@@ -1,4 +1,5 @@
 import { useStore } from '../../state/store';
+import { strings } from '../../strings';
 
 interface StickyPushBarProps {
   /** Open the push dialog (same callback the desktop PendingFooter uses). */
@@ -30,9 +31,13 @@ interface StickyPushBarProps {
  * desktop (FR-016).
  */
 export function StickyPushBar({ onPushChanges, variant = 'idle' }: StickyPushBarProps): JSX.Element | null {
-  const { edits } = useStore();
+  const { edits, clearStaging } = useStore();
   const n = edits.length;
   if (n === 0) return null;
+
+  const onDiscard = (): void => {
+    if (window.confirm(strings.pending.confirmDiscard)) clearStaging();
+  };
 
   return (
     <div
@@ -45,6 +50,15 @@ export function StickyPushBar({ onPushChanges, variant = 'idle' }: StickyPushBar
       <span className="sticky-push-bar-count" data-testid="sticky-push-bar-count">
         {n === 1 ? '1 unsynced edit' : `${n} unsynced edits`}
       </span>
+      <button
+        type="button"
+        className="sticky-push-bar-discard"
+        data-testid="discard-button"
+        onClick={onDiscard}
+        aria-label={`Discard ${n} pending edit${n === 1 ? '' : 's'}`}
+      >
+        {strings.pending.discardAll}
+      </button>
       <button
         type="button"
         className="sticky-push-bar-button"

@@ -9,7 +9,7 @@ import {
   type PendingEdit,
 } from '../../../types';
 
-function makeStoreApi(edits: PendingEdit[]): StoreApi {
+function makeStoreApi(edits: PendingEdit[], clearStaging: () => void = () => undefined): StoreApi {
   return {
     state: { status: 'loading' },
     setState: () => undefined,
@@ -20,7 +20,7 @@ function makeStoreApi(edits: PendingEdit[]): StoreApi {
     projected: null,
     stageEdit: () => undefined,
     undoEdit: () => undefined,
-    clearStaging: () => undefined,
+    clearStaging,
     persistenceWarning: null,
   };
 }
@@ -77,6 +77,35 @@ describe('StickyPushBar', () => {
     );
     fireEvent.click(screen.getByTestId('push-button'));
     expect(onPush).toHaveBeenCalled();
+  });
+
+  it('discard button calls clearStaging when confirmed', () => {
+    const clearStaging = vi.fn();
+    const api = makeStoreApi([sampleEdit], clearStaging);
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    render(
+      <StoreProvider value={api}>
+        <StickyPushBar onPushChanges={() => undefined} />
+      </StoreProvider>,
+    );
+    fireEvent.click(screen.getByTestId('discard-button'));
+    expect(confirmSpy).toHaveBeenCalled();
+    expect(clearStaging).toHaveBeenCalled();
+    confirmSpy.mockRestore();
+  });
+
+  it('discard button is a no-op when the user cancels the confirm', () => {
+    const clearStaging = vi.fn();
+    const api = makeStoreApi([sampleEdit], clearStaging);
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    render(
+      <StoreProvider value={api}>
+        <StickyPushBar onPushChanges={() => undefined} />
+      </StoreProvider>,
+    );
+    fireEvent.click(screen.getByTestId('discard-button'));
+    expect(clearStaging).not.toHaveBeenCalled();
+    confirmSpy.mockRestore();
   });
 
   it('exposes data-state for variant styling (idle | conflict | success)', () => {
