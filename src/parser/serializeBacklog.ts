@@ -5,7 +5,12 @@
  *   serializeBacklog(parseBacklog(text)) === text
  *
  * Behavioural rules:
- * - Strikethrough wrapping is enforced from `status === 'complete'`.
+ * - Strikethrough wrapping is enforced from `status === 'complete'`. Per-cell
+ *   wrapping is used (`| ~~v~~ | ~~v~~ |`) — row-level wrapping
+ *   (`~~| v | v |~~`) was rejected because GFM table parsers treat the leading
+ *   `~~|` as a first cell `~~` (the leading pipe is optional), shifting every
+ *   column right by one and breaking the rendered table.
+ * - Empty cells (e.g. an absent Epic) stay empty rather than wrapping `~~~~`.
  * - Pipe characters inside cell values are escaped as `\|`.
  * - `Epic === null` serialises as the empty cell `| |`.
  * - Unparseable rows in `rawItemRows` / `rawEpicRows` are emitted verbatim,
@@ -38,12 +43,12 @@ function formatItemRow(item: BacklogItem): string {
     item.created,
     item.updated,
   ];
-  const inner = cells.map((c) => ` ${c} `).join('|');
-  const row = `|${inner}|`;
-  if (item.status === 'complete') {
-    return `~~${row}~~`;
-  }
-  return row;
+  const rendered =
+    item.status === 'complete'
+      ? cells.map((c) => (c === '' ? '' : `~~${c}~~`))
+      : cells;
+  const inner = rendered.map((c) => ` ${c} `).join('|');
+  return `|${inner}|`;
 }
 
 function formatEpicRow(epic: Epic): string {

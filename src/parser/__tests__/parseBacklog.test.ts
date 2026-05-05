@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { parseBacklog, splitRowCells, unwrapStrikethrough } from '../parseBacklog';
+import {
+  parseBacklog,
+  splitRowCells,
+  unwrapPerCellStrikethrough,
+  unwrapStrikethrough,
+} from '../parseBacklog';
 import { serializeBacklog } from '../serializeBacklog';
 
 const FIXTURE = `# Backlog
@@ -24,7 +29,7 @@ intro
 | ID | Category | Description | V | M | A | Total | Complexity | Status | Epic | Created | Updated |
 |----|----------|-------------|---|---|---|-------|------------|--------|------|---------|---------|
 | 001 | Feature | A simple feature | 5 | 3 | 5 | 13 | Medium | approved | E01 | 2025-01-15 | 2026-04-01 |
-~~| 002 | Bug | A completed fix | 4 | 4 | 4 | 12 | Low | complete | E01 | 2025-02-01 | 2026-04-15 |~~
+| ~~002~~ | ~~Bug~~ | ~~A completed fix~~ | ~~4~~ | ~~4~~ | ~~4~~ | ~~12~~ | ~~Low~~ | ~~complete~~ | ~~E01~~ | ~~2025-02-01~~ | ~~2026-04-15~~ |
 | 003 | Tech Debt | Has \\| escaped pipe | - | - | - | - | High | proposed |  | 2026-04-22 | 2026-04-22 |
 
 ## Notes
@@ -52,6 +57,19 @@ describe('unwrapStrikethrough', () => {
   it('returns input unchanged when not struck', () => {
     const r = unwrapStrikethrough('| a | b |');
     expect(r.struck).toBe(false);
+  });
+});
+
+describe('unwrapPerCellStrikethrough', () => {
+  it('unwraps when every non-empty cell is wrapped', () => {
+    const r = unwrapPerCellStrikethrough(['~~a~~', '~~b~~', '', '~~c~~']);
+    expect(r.struck).toBe(true);
+    expect(r.cells).toEqual(['a', 'b', '', 'c']);
+  });
+  it('rejects when any non-empty cell is unwrapped', () => {
+    const r = unwrapPerCellStrikethrough(['~~a~~', 'b', '~~c~~']);
+    expect(r.struck).toBe(false);
+    expect(r.cells).toEqual(['~~a~~', 'b', '~~c~~']);
   });
 });
 

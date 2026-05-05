@@ -40,6 +40,35 @@ export function unwrapStrikethrough(line: string): { stripped: string; struck: b
   return { stripped: line, struck: false };
 }
 
+/**
+ * Detect per-cell strikethrough wrapping (`| ~~v~~ | ~~v~~ | ... |`) and
+ * return the unwrapped cells. A row qualifies if every non-empty cell is
+ * wrapped — empty cells (e.g. an absent Epic) are tolerated.
+ *
+ * This is the canonical wire format for `complete` items; row-level
+ * `~~| ... |~~` wrapping renders broken in GFM tables (the leading `~~|` is
+ * parsed as a `~~` first cell, shifting every column).
+ */
+export function unwrapPerCellStrikethrough(
+  cells: string[],
+): { cells: string[]; struck: boolean } {
+  const nonEmpty = cells.filter((c) => c !== '');
+  if (nonEmpty.length === 0) return { cells, struck: false };
+  const allWrapped = nonEmpty.every(
+    (c) =>
+      c.startsWith(STRIKETHROUGH_PREFIX) &&
+      c.endsWith(STRIKETHROUGH_SUFFIX) &&
+      c.length >= STRIKETHROUGH_PREFIX.length + STRIKETHROUGH_SUFFIX.length,
+  );
+  if (!allWrapped) return { cells, struck: false };
+  const unwrapped = cells.map((c) =>
+    c === ''
+      ? c
+      : c.slice(STRIKETHROUGH_PREFIX.length, -STRIKETHROUGH_SUFFIX.length),
+  );
+  return { cells: unwrapped, struck: true };
+}
+
 // ─── Pipe-aware splitter ───────────────────────────────────────────────────
 
 /**
@@ -109,7 +138,7 @@ function parseItemRow(
   lineNumber: number,
   warnings: ParseWarning[],
 ): BacklogItem | null {
-  const { stripped, struck } = unwrapStrikethrough(rawLine.trim());
+  const { stripped, struck: rowStruck } = unwrapStrikethrough(rawLine.trim());
   let cells: string[];
   try {
     cells = splitRowCells(stripped);
@@ -121,6 +150,15 @@ function parseItemRow(
       reason: err instanceof Error ? err.message : 'split failed',
     });
     return null;
+  }
+
+  let struck = rowStruck;
+  if (!struck) {
+    const perCell = unwrapPerCellStrikethrough(cells);
+    if (perCell.struck) {
+      cells = perCell.cells;
+      struck = true;
+    }
   }
 
   if (cells.length !== ITEMS_HEADER_COLUMNS.length) {
