@@ -116,6 +116,7 @@ function AppShell(): JSX.Element {
   }, [prNumber, setState]);
 
   const onAuthRequired = (): void => setShowAuth(true);
+  const toggleAuthPanel = (): void => setShowAuth((prev) => !prev);
 
   return (
     <div className="app-shell">
@@ -152,13 +153,13 @@ function AppShell(): JSX.Element {
       {state.status === 'loaded' && projected ? (
         isMobile ? (
           <>
-            <MobileFilterBar />
+            <MobileFilterBar onOpenSettings={toggleAuthPanel} />
             <CardList doc={projected} />
             <StickyPushBar onPushChanges={() => setShowPushDialog(true)} />
           </>
         ) : (
           <>
-            <FilterBar doc={projected} />
+            <FilterBar doc={projected} onOpenSettings={toggleAuthPanel} />
             <ItemsTable
               doc={projected}
               baseline={state.baseline}

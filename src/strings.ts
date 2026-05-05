@@ -77,6 +77,8 @@ export const strings = {
     networkError: 'Network error. Your edits are preserved; please retry.',
   },
   auth: {
+    settingsButton: 'Settings',
+    settingsAriaLabel: 'Open settings (GitHub authentication)',
     title: 'Sign in to push edits',
     patLabel: 'GitHub Personal Access Token (classic, scope `repo`)',
     patHelp:

@@ -1,4 +1,5 @@
 import { type Phase, useStore } from '../../state/store';
+import { strings } from '../../strings';
 
 const PHASE_OPTIONS: { value: Phase; label: string }[] = [
   { value: 'any', label: '(any)' },
@@ -18,7 +19,11 @@ const PHASE_OPTIONS: { value: Phase; label: string }[] = [
  *     (handled inside `selectFilteredSortedItems`); the checkbox is also
  *     visually disabled here for clarity.
  */
-export function MobileFilterBar(): JSX.Element {
+export interface MobileFilterBarProps {
+  onOpenSettings?: () => void;
+}
+
+export function MobileFilterBar({ onOpenSettings }: MobileFilterBarProps = {}): JSX.Element {
   const { view, setView } = useStore();
 
   const phaseDisabled = false;
@@ -26,17 +31,34 @@ export function MobileFilterBar(): JSX.Element {
 
   return (
     <div className="mobile-filter-bar" role="region" aria-label="Filters">
-      <input
-        type="search"
-        className="mobile-filter-search"
-        data-testid="mobile-filter-search"
-        placeholder="Search backlog…"
-        value={view.freeText}
-        onChange={(e) =>
-          setView((v) => ({ ...v, freeText: e.target.value }))
-        }
-        aria-label="Search backlog"
-      />
+      <div
+        className="mobile-filter-search-row"
+        style={{ display: 'flex', gap: 8, alignItems: 'center' }}
+      >
+        <input
+          type="search"
+          className="mobile-filter-search"
+          data-testid="mobile-filter-search"
+          placeholder="Search backlog…"
+          value={view.freeText}
+          onChange={(e) =>
+            setView((v) => ({ ...v, freeText: e.target.value }))
+          }
+          aria-label="Search backlog"
+          style={{ flex: 1 }}
+        />
+        {onOpenSettings ? (
+          <button
+            type="button"
+            className="mobile-filter-settings"
+            onClick={onOpenSettings}
+            aria-label={strings.auth.settingsAriaLabel}
+            data-testid="open-settings"
+          >
+            {strings.auth.settingsButton}
+          </button>
+        ) : null}
+      </div>
 
       <div className="mobile-filter-row">
         <label className="mobile-filter-phase-label" htmlFor="mobile-filter-phase">

@@ -4,7 +4,12 @@ import { COMPLEXITY_VALUES, EDITABLE_STATUS_VALUES } from '../types';
 import { strings } from '../strings';
 import { useStore } from '../state/store';
 
-export function FilterBar({ doc }: { doc: BacklogDocument }): JSX.Element {
+export interface FilterBarProps {
+  doc: BacklogDocument;
+  onOpenSettings?: () => void;
+}
+
+export function FilterBar({ doc, onOpenSettings }: FilterBarProps): JSX.Element {
   const { view, setView } = useStore();
   const categories = useMemo(() => {
     const set = new Set<string>();
@@ -131,6 +136,18 @@ export function FilterBar({ doc }: { doc: BacklogDocument }): JSX.Element {
       >
         {view.expandAllDescriptions ? strings.description.collapseAll : strings.description.expandAll}
       </button>
+
+      {onOpenSettings ? (
+        <button
+          type="button"
+          onClick={onOpenSettings}
+          aria-label={strings.auth.settingsAriaLabel}
+          data-testid="open-settings"
+          style={{ marginLeft: 'auto' }}
+        >
+          {strings.auth.settingsButton}
+        </button>
+      ) : null}
     </div>
   );
 }
