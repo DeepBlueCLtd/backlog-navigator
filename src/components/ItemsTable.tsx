@@ -22,9 +22,7 @@ const SORTABLE: { key: SortKey; col: string; label: string }[] = [
 const FIXED: { col: string; label: string }[] = [
   { col: 'category', label: strings.columns.category },
   { col: 'description', label: strings.columns.description },
-  { col: 'value', label: strings.columns.value },
-  { col: 'media', label: strings.columns.media },
-  { col: 'autonomy', label: strings.columns.autonomy },
+  { col: 'vma', label: strings.columns.vma },
   { col: 'complexity', label: strings.columns.complexity },
   { col: 'status', label: strings.columns.status },
   { col: 'epic', label: strings.columns.epic },
@@ -64,9 +62,7 @@ export function ItemsTable({ doc, baseline, authed, onAuthRequired }: ItemsTable
     );
     cells.push(<th key="category">{strings.columns.category}</th>);
     cells.push(<th key="description">{strings.columns.description}</th>);
-    cells.push(<th key="value">{strings.columns.value}</th>);
-    cells.push(<th key="media">{strings.columns.media}</th>);
-    cells.push(<th key="autonomy">{strings.columns.autonomy}</th>);
+    cells.push(<th key="vma" className="vma" title="Value · Media · Autonomy">{strings.columns.vma}</th>);
     cells.push(
       <th key="total" onClick={() => onSort('total')} aria-sort={view.sortKey === 'total' ? (view.sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
         {strings.columns.total} <span className="sort-indicator">{sortIndicator('total')}</span>
@@ -85,6 +81,7 @@ export function ItemsTable({ doc, baseline, authed, onAuthRequired }: ItemsTable
         {strings.columns.updated} <span className="sort-indicator">{sortIndicator('updated')}</span>
       </th>,
     );
+    cells.push(<th key="action" aria-label="Row actions" className="action" />);
     void FIXED; void isSortable;
     return <tr>{cells}</tr>;
   };

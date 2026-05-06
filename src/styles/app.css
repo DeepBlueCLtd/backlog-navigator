@@ -138,6 +138,54 @@ table.items td.score { text-align: center; width: 30px; }
 table.items td.numeric { text-align: right; width: 60px; }
 table.items td.short { width: 90px; white-space: nowrap; }
 table.items td.description { max-width: 420px; }
+
+table.items th.vma,
+table.items td.vma {
+  text-align: center;
+  white-space: nowrap;
+  width: 70px;
+  font-family: var(--font-mono);
+}
+table.items td.vma.edited { background: var(--row-edited-cell-bg); }
+table.items td.vma .vma-axis {
+  display: inline-block;
+  padding: 0 2px;
+  cursor: pointer;
+  border-radius: 2px;
+  min-width: 1ch;
+}
+table.items td.vma .vma-axis.edited {
+  background: var(--row-edited-cell-bg);
+  outline: 1px solid var(--warn-fg);
+}
+table.items td.vma .vma-axis:hover { background: var(--bg-alt); }
+table.items td.vma .vma-axis.editing { padding: 0; }
+table.items td.vma .vma-sep { color: var(--fg-muted); padding: 0 1px; }
+
+table.items th.action,
+table.items td.action {
+  width: 32px;
+  padding: 4px;
+  text-align: center;
+}
+table.items td.action .copy-cmd-btn {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 2px 6px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--fg-muted);
+}
+table.items td.action .copy-cmd-btn:hover {
+  background: var(--bg-alt);
+  border-color: var(--border);
+  color: var(--fg);
+}
+table.items td.action .copy-cmd-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
 .description-cell.collapsed { max-height: 3em; overflow: hidden; position: relative; }
 .description-cell.collapsed::after {
   content: '…';

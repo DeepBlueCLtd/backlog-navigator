@@ -27,6 +27,7 @@ import {
 import { useStore, findEditForCell } from '../state/store';
 import { strings } from '../strings';
 import { todayIso } from '../state/pendingEdits';
+import { speckitClipboardString } from '../state/speckitCommand';
 
 export interface ItemRowProps {
   item: BacklogItem;
@@ -282,9 +283,46 @@ export function ItemRow({
         <DescriptionCell itemId={item.id} text={item.description} />,
         'description',
       )}
-      {renderCell('value', String(item.value), 'score')}
-      {renderCell('media', String(item.media), 'score')}
-      {renderCell('autonomy', String(item.autonomy), 'score')}
+      {(() => {
+        const anyEdited =
+          editedColumns.has('value') ||
+          editedColumns.has('media') ||
+          editedColumns.has('autonomy');
+        const cls = `vma${anyEdited ? ' edited' : ''}`.trim();
+        const axis = (col: 'value' | 'media' | 'autonomy'): JSX.Element => {
+          const edited = editedColumns.has(col);
+          const onContext = (e: React.MouseEvent): void => {
+            if (edited) {
+              e.preventDefault();
+              undoCol(col);
+            }
+          };
+          return editing === col ? (
+            <span className="vma-axis editing">{renderEditor(col)}</span>
+          ) : (
+            <span
+              className={`vma-axis${edited ? ' edited' : ''}`}
+              title={edited ? `${col} edited (right-click to undo)` : col}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (editing === null) beginEdit(col);
+              }}
+              onContextMenu={onContext}
+            >
+              {String(item[col])}
+            </span>
+          );
+        };
+        return (
+          <td className={cls} title="Value · Media · Autonomy">
+            {axis('value')}
+            <span className="vma-sep">·</span>
+            {axis('media')}
+            <span className="vma-sep">·</span>
+            {axis('autonomy')}
+          </td>
+        );
+      })()}
       {renderCell('total', totalText, 'numeric')}
       {renderCell('complexity', item.complexity, 'short')}
       {renderCell('status', item.status, 'short')}
@@ -300,7 +338,40 @@ export function ItemRow({
         'short',
       )}
       {renderCell('updated', item.updated, 'short')}
+      <td className="action">
+        <CopySpeckitCommandButton item={item} />
+      </td>
     </tr>
+  );
+}
+
+function CopySpeckitCommandButton({ item }: { item: BacklogItem }): JSX.Element | null {
+  const command = speckitClipboardString(item.status, item.id as unknown as number);
+  const [copied, setCopied] = useState(false);
+  if (!command) return null;
+  const onClick = async (e: React.MouseEvent): Promise<void> => {
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(command);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // eslint-disable-next-line no-console
+      console.warn('[backlog-nav] clipboard write failed for', command);
+    }
+  };
+  return (
+    <button
+      type="button"
+      className="copy-cmd-btn"
+      data-testid="copy-speckit-command"
+      data-command={command}
+      onClick={onClick}
+      title={`Copy: ${command}`}
+      aria-label={`Copy speckit command: ${command}`}
+    >
+      {copied ? '✓' : '📋'}
+    </button>
   );
 }
 

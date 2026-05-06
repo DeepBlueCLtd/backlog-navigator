@@ -17,7 +17,7 @@ export function EpicGroupHeader({
 }: EpicGroupHeaderProps): JSX.Element {
   return (
     <tr>
-      <td colSpan={12} className="epic-group-header" data-testid="epic-group-header">
+      <td colSpan={11} className="epic-group-header" data-testid="epic-group-header">
         <span style={{ minWidth: 50 }}>{epic ? epic.id : strings.group.unassigned}</span>
         <span style={{ flex: 1 }}>{epic ? epic.title : ''}</span>
         <span className="progress-text">{strings.group.progress(done, total)}</span>
