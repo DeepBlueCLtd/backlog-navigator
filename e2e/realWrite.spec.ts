@@ -7,29 +7,17 @@
  */
 
 import { expect, test } from '@playwright/test';
-import { readFileSync } from 'fs';
-import { dirname, join } from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const BACKLOG_PATH = join(__dirname, '..', '..', '..', 'BACKLOG.md');
+import { mockGithubBacklogFetch } from './helpers/mock-github.js';
 
 test.describe('Real-write push (mocked)', () => {
   test('runs the full live-mode 4-call sequence and reports the PR URL', async ({ page }) => {
-    const text = readFileSync(BACKLOG_PATH, 'utf8');
-    const baselineBody = JSON.stringify({
-      type: 'file',
-      encoding: 'base64',
-      content: Buffer.from(text, 'utf8').toString('base64'),
-      sha: '0123456789abcdef0123456789abcdef01234567',
-      path: 'BACKLOG.md',
-    });
-
     const calls: string[] = [];
 
-    // 1. Read BACKLOG.md
+    // 1a. Fixture-backed GET for the contents read.
+    await mockGithubBacklogFetch(page);
+
+    // 1b. PUT handler for the live-mode commit. Registered after the helper
+    // so it is consulted first; non-PUT requests fall through to the helper.
     await page.route('https://api.github.com/**/contents/BACKLOG.md*', async (route) => {
       const req = route.request();
       calls.push(`${req.method()} ${req.url()}`);
@@ -44,11 +32,7 @@ test.describe('Real-write push (mocked)', () => {
         });
         return;
       }
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: baselineBody,
-      });
+      await route.fallback();
     });
 
     // 2. GET ref/heads/main

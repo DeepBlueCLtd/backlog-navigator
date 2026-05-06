@@ -4,28 +4,12 @@
  */
 
 import { expect, test } from '@playwright/test';
-import { readFileSync } from 'fs';
-import { dirname, join } from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const BACKLOG_PATH = join(__dirname, '..', '..', '..', 'BACKLOG.md');
+import { mockGithubBacklogFetch } from './helpers/mock-github.js';
 
 test.describe('PR mode (?pr=NNN)', () => {
   test('loads BACKLOG.md from the PR head branch and surfaces the PR-mode banner', async ({
     page,
   }) => {
-    const text = readFileSync(BACKLOG_PATH, 'utf8');
-    const fileBody = JSON.stringify({
-      type: 'file',
-      encoding: 'base64',
-      content: Buffer.from(text, 'utf8').toString('base64'),
-      sha: '0123456789abcdef0123456789abcdef01234567',
-      path: 'BACKLOG.md',
-    });
-
     // Mock pulls/123
     await page.route('https://api.github.com/**/pulls/123', async (route) => {
       await route.fulfill({
@@ -41,12 +25,17 @@ test.describe('PR mode (?pr=NNN)', () => {
       });
     });
 
-    // Mock the contents read — must be called with ref=feature/refine-backlog
+    // Fixture-backed contents read — registered first so the ref-observer
+    // route below is consulted first; we fall back to the helper for the
+    // actual fulfilment.
+    await mockGithubBacklogFetch(page);
+
+    // Observer: the contents read must be called with ref=feature/refine-backlog.
     let observedRef: string | null = null;
     await page.route('https://api.github.com/**/contents/BACKLOG.md*', async (route) => {
       const url = new URL(route.request().url());
       observedRef = url.searchParams.get('ref');
-      await route.fulfill({ status: 200, contentType: 'application/json', body: fileBody });
+      await route.fallback();
     });
 
     await page.goto('/?dryRun=1&pr=123');

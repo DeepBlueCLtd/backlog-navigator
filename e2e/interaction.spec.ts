@@ -5,14 +5,14 @@
  */
 
 import { expect, test } from '@playwright/test';
-import { readFileSync, copyFileSync, mkdirSync } from 'fs';
+import { copyFileSync, mkdirSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
+import { mockGithubBacklogFetch } from './helpers/mock-github.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const BACKLOG_PATH = join(__dirname, '..', '..', '..', 'BACKLOG.md');
 const EVIDENCE_DIR = join(
   __dirname,
   '..',
@@ -29,29 +29,21 @@ test.use({
 });
 
 test('records dry-run push flow', async ({ page }) => {
-  // Mock GitHub
-  const text = readFileSync(BACKLOG_PATH, 'utf8');
-  const body = JSON.stringify({
-    type: 'file',
-    encoding: 'base64',
-    content: Buffer.from(text, 'utf8').toString('base64'),
-    sha: '0123456789abcdef0123456789abcdef01234567',
-    path: 'BACKLOG.md',
-  });
-  await page.route('https://api.github.com/**/contents/BACKLOG.md*', async (route) => {
-    await route.fulfill({ status: 200, contentType: 'application/json', body });
-  });
+  await mockGithubBacklogFetch(page);
 
   await page.goto('/?dryRun=1');
   await expect(page.locator('table.items')).toBeVisible({ timeout: 10000 });
 
-  // Stage 3 status edits (slowly so the recording shows the action)
+  // Stage 3 status edits. Fixture rows 001/002/003 are
+  // `proposed`/`approved`/`clarified` respectively, so flipping them all to
+  // `tasked` is a guaranteed change for every row (no no-op) — the dry-run
+  // diff will show three real edits.
   for (let i = 0; i < 3; i++) {
     const row = page.locator('table.items tbody tr').nth(i);
     await row.locator('td').nth(8).click();
     await page.waitForTimeout(250);
     const dropdown = row.locator('.cell-editor select[aria-label="Status"]');
-    await dropdown.selectOption('clarified');
+    await dropdown.selectOption('tasked');
     await page.waitForTimeout(250);
   }
 
