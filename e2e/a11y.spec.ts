@@ -40,7 +40,7 @@ test.describe('Backlog Navigator a11y', () => {
     await expect(page.locator('table.items')).toBeVisible({ timeout: 10000 });
     // Stage one edit so the Push button is enabled.
     const row = page.locator('table.items tbody tr').first();
-    await row.locator('td').nth(8).click();
+    await row.locator('td').nth(6).click();
     await row.locator('.cell-editor select[aria-label="Status"]').selectOption('clarified');
     await page.getByTestId('push-changes').click();
     await expect(page.getByRole('dialog')).toBeVisible();

@@ -95,7 +95,7 @@ test.describe('Real-write push (mocked)', () => {
 
     // Stage a status edit on the first row.
     const row = page.locator('table.items tbody tr').first();
-    await row.locator('td').nth(8).click();
+    await row.locator('td').nth(6).click();
     await row.locator('.cell-editor select[aria-label="Status"]').selectOption('clarified');
 
     // Open Push dialog and confirm

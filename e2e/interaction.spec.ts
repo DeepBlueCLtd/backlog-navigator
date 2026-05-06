@@ -40,7 +40,7 @@ test('records dry-run push flow', async ({ page }) => {
   // diff will show three real edits.
   for (let i = 0; i < 3; i++) {
     const row = page.locator('table.items tbody tr').nth(i);
-    await row.locator('td').nth(8).click();
+    await row.locator('td').nth(6).click();
     await page.waitForTimeout(250);
     const dropdown = row.locator('.cell-editor select[aria-label="Status"]');
     await dropdown.selectOption('tasked');

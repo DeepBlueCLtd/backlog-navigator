@@ -63,8 +63,9 @@ test.describe('Backlog Navigator — Story 1 evidence', () => {
     // reflects three real edits (no no-op on row 003).
     for (let i = 0; i < 3; i++) {
       const row = page.locator('table.items tbody tr').nth(i);
-      // Click the status cell — 9th column (0-indexed 8: id, cat, desc, V, M, A, total, complex, status)
-      await row.locator('td').nth(8).click();
+      // Click the status cell — 7th column (0-indexed 6: id, cat, desc, vma, total, complex, status).
+      // After PR #594 the V/M/A axes are consolidated into a single `vma` cell.
+      await row.locator('td').nth(6).click();
       // The cell editor's <select> is inside the row; pick that one (not the
       // FilterBar's Status filter which shares aria-label="Status").
       const dropdown = row.locator('.cell-editor select[aria-label="Status"]');
@@ -109,7 +110,7 @@ test.describe('Backlog Navigator — Story 1 evidence', () => {
 
     // Open status editor on the first row
     const firstRow = page.locator('table.items tbody tr').first();
-    await firstRow.locator('td').nth(8).click();
+    await firstRow.locator('td').nth(6).click();
     await expect(firstRow.locator('.cell-editor select')).toBeVisible();
     await page.screenshot({
       path: join(SCREENSHOTS_DIR, 'edit-controls.png'),
