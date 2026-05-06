@@ -1,38 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
-import { readFileSync } from 'fs';
-import { dirname, join } from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const BACKLOG_PATH = join(__dirname, '..', '..', '..', '..', 'BACKLOG.md');
-
-function encodeUtf8ToBase64(text: string): string {
-  return Buffer.from(text, 'utf8').toString('base64');
-}
-
-async function mockGithubBacklogFetch(page: Page): Promise<void> {
-  const text = readFileSync(BACKLOG_PATH, 'utf8');
-  const body = JSON.stringify({
-    type: 'file',
-    encoding: 'base64',
-    content: encodeUtf8ToBase64(text),
-    sha: '0123456789abcdef0123456789abcdef01234567',
-    path: 'BACKLOG.md',
-  });
-  await page.route('https://api.github.com/**/contents/BACKLOG.md*', async (route) => {
-    if (route.request().method() === 'GET') {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body,
-      });
-      return;
-    }
-    // PUT requests are handled per-test via additional page.route() calls.
-    await route.continue();
-  });
-}
+import { expect, test } from '@playwright/test';
+import { mockGithubBacklogFetch } from '../helpers/mock-github.js';
 
 /**
  * Story 4 — Push from a phone (US4).
@@ -63,15 +30,14 @@ test.describe('Backlog Navigator — mobile push (US4)', () => {
     await page.goto('/?dryRun=1');
     await expect(page.getByTestId('card-list')).toBeVisible({ timeout: 10000 });
 
-    // Make a dirty edit via the bottom sheet.
+    // Make a dirty edit via the bottom sheet. Fixture row 001 is `proposed`
+    // → `approved` is a guaranteed change (no-op-free per #245).
     const firstCard = page.getByTestId(/^item-card-\d+$/).first();
-    const beforeStatus = (await firstCard.getByTestId('status-chip').textContent()) ?? '';
     await firstCard.getByTestId('status-chip').click();
     const sheet = page.getByTestId('bottom-sheet');
     await expect(sheet).toBeVisible();
     const select = sheet.locator('select[aria-label="Status"]');
-    const newStatus = beforeStatus.toLowerCase().includes('approved') ? 'specified' : 'approved';
-    await select.selectOption(newStatus);
+    await select.selectOption('approved');
     await sheet.getByTestId('bottom-sheet-save').click();
     await expect(sheet).toBeHidden();
 
@@ -85,13 +51,12 @@ test.describe('Backlog Navigator — mobile push (US4)', () => {
     await page.goto('/?dryRun=1');
     await expect(page.getByTestId('card-list')).toBeVisible({ timeout: 10000 });
 
+    // Fixture row 001 is `proposed`; flip to `approved` as a deterministic edit.
     const firstCard = page.getByTestId(/^item-card-\d+$/).first();
-    const beforeStatus = (await firstCard.getByTestId('status-chip').textContent()) ?? '';
     await firstCard.getByTestId('status-chip').click();
     const sheet = page.getByTestId('bottom-sheet');
     const select = sheet.locator('select[aria-label="Status"]');
-    const newStatus = beforeStatus.toLowerCase().includes('approved') ? 'specified' : 'approved';
-    await select.selectOption(newStatus);
+    await select.selectOption('approved');
     await sheet.getByTestId('bottom-sheet-save').click();
 
     await page.getByTestId('push-button').click();

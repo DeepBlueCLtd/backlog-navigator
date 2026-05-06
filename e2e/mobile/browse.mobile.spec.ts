@@ -1,12 +1,12 @@
-import { expect, test, type Page } from '@playwright/test';
-import { readFileSync, mkdirSync } from 'fs';
+import { expect, test } from '@playwright/test';
+import { mkdirSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
+import { mockGithubBacklogFetch } from '../helpers/mock-github.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const BACKLOG_PATH = join(__dirname, '..', '..', '..', '..', 'BACKLOG.md');
 const SCREENSHOTS_DIR = join(
   __dirname,
   '..',
@@ -19,28 +19,6 @@ const SCREENSHOTS_DIR = join(
   'screenshots',
 );
 mkdirSync(SCREENSHOTS_DIR, { recursive: true });
-
-function encodeUtf8ToBase64(text: string): string {
-  return Buffer.from(text, 'utf8').toString('base64');
-}
-
-async function mockGithubBacklogFetch(page: Page): Promise<void> {
-  const text = readFileSync(BACKLOG_PATH, 'utf8');
-  const body = JSON.stringify({
-    type: 'file',
-    encoding: 'base64',
-    content: encodeUtf8ToBase64(text),
-    sha: '0123456789abcdef0123456789abcdef01234567',
-    path: 'BACKLOG.md',
-  });
-  await page.route('https://api.github.com/**/contents/BACKLOG.md*', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body,
-    });
-  });
-}
 
 /**
  * Story 1 — Browse & find from a phone (US1).
@@ -146,8 +124,7 @@ test.describe('Backlog Navigator — mobile browse (US1)', () => {
     const beforeCount = await page.getByTestId(/^item-card-\d+$/).count();
     await page.getByTestId('include-completed-toggle').check();
     // After flipping the toggle, the visible-card count should increase
-    // (the live BACKLOG.md is known to contain at least some `complete`
-    // rows). Loose check — exact delta is data-driven.
+    // (the fixture contains row 006 with status `complete`).
     const afterCount = await page.getByTestId(/^item-card-\d+$/).count();
     expect(afterCount).toBeGreaterThanOrEqual(beforeCount);
   });

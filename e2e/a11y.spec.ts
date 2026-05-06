@@ -5,28 +5,11 @@
 
 import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-import { readFileSync } from 'fs';
-import { dirname, join } from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const BACKLOG_PATH = join(__dirname, '..', '..', '..', 'BACKLOG.md');
+import { mockGithubBacklogFetch } from './helpers/mock-github.js';
 
 test.describe('Backlog Navigator a11y', () => {
   test.beforeEach(async ({ page }) => {
-    const text = readFileSync(BACKLOG_PATH, 'utf8');
-    const body = JSON.stringify({
-      type: 'file',
-      encoding: 'base64',
-      content: Buffer.from(text, 'utf8').toString('base64'),
-      sha: '0123456789abcdef0123456789abcdef01234567',
-      path: 'BACKLOG.md',
-    });
-    await page.route('https://api.github.com/**/contents/BACKLOG.md*', async (route) => {
-      await route.fulfill({ status: 200, contentType: 'application/json', body });
-    });
+    await mockGithubBacklogFetch(page);
   });
 
   test('browse view has no serious axe violations', async ({ page }) => {

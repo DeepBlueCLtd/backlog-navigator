@@ -1,12 +1,11 @@
-import { expect, test, type Page } from '@playwright/test';
-import { readFileSync } from 'fs';
+import { expect, test } from '@playwright/test';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
+import { mockGithubBacklogFetch } from './helpers/mock-github.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const BACKLOG_PATH = join(__dirname, '..', '..', '..', 'BACKLOG.md');
 const SCREENSHOTS_DIR = join(
   __dirname,
   '..',
@@ -17,33 +16,6 @@ const SCREENSHOTS_DIR = join(
   'evidence',
   'screenshots',
 );
-
-/**
- * Mock GitHub Contents API response — Playwright intercepts the navigator's
- * fetch to api.github.com and serves the local BACKLOG.md instead, so the
- * navigator renders against real data without leaving the cloud sandbox.
- */
-function encodeUtf8ToBase64(text: string): string {
-  return Buffer.from(text, 'utf8').toString('base64');
-}
-
-async function mockGithubBacklogFetch(page: Page): Promise<void> {
-  const text = readFileSync(BACKLOG_PATH, 'utf8');
-  const body = JSON.stringify({
-    type: 'file',
-    encoding: 'base64',
-    content: encodeUtf8ToBase64(text),
-    sha: '0123456789abcdef0123456789abcdef01234567',
-    path: 'BACKLOG.md',
-  });
-  await page.route('https://api.github.com/**/contents/BACKLOG.md*', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body,
-    });
-  });
-}
 
 test.describe('Backlog Navigator — Story 1 evidence', () => {
   test('renders the dry-run shell', async ({ page }) => {
@@ -86,6 +58,9 @@ test.describe('Backlog Navigator — Story 1 evidence', () => {
     await expect(page.locator('table.items')).toBeVisible({ timeout: 10000 });
 
     // Stage 3 edits by clicking status cells on the first three rows.
+    // Fixture rows 001/002/003 are `proposed`/`approved`/`clarified`; target
+    // `tasked` is a guaranteed change for all three so the dry-run diff
+    // reflects three real edits (no no-op on row 003).
     for (let i = 0; i < 3; i++) {
       const row = page.locator('table.items tbody tr').nth(i);
       // Click the status cell — 9th column (0-indexed 8: id, cat, desc, V, M, A, total, complex, status)
@@ -93,7 +68,7 @@ test.describe('Backlog Navigator — Story 1 evidence', () => {
       // The cell editor's <select> is inside the row; pick that one (not the
       // FilterBar's Status filter which shares aria-label="Status").
       const dropdown = row.locator('.cell-editor select[aria-label="Status"]');
-      await dropdown.selectOption('clarified');
+      await dropdown.selectOption('tasked');
     }
 
     // Wait for footer to update.
