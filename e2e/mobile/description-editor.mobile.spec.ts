@@ -1,33 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
-import { readFileSync } from 'fs';
-import { dirname, join } from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const BACKLOG_PATH = join(__dirname, '..', '..', '..', '..', 'BACKLOG.md');
-
-function encodeUtf8ToBase64(text: string): string {
-  return Buffer.from(text, 'utf8').toString('base64');
-}
-
-async function mockGithubBacklogFetch(page: Page): Promise<void> {
-  const text = readFileSync(BACKLOG_PATH, 'utf8');
-  const body = JSON.stringify({
-    type: 'file',
-    encoding: 'base64',
-    content: encodeUtf8ToBase64(text),
-    sha: '0123456789abcdef0123456789abcdef01234567',
-    path: 'BACKLOG.md',
-  });
-  await page.route('https://api.github.com/**/contents/BACKLOG.md*', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body,
-    });
-  });
-}
+import { expect, test } from '@playwright/test';
+import { mockGithubBacklogFetch } from '../helpers/mock-github.js';
 
 /**
  * Story 3 — full-screen Markdown Description editor (US3).

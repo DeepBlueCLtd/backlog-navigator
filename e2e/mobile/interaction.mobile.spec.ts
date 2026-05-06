@@ -1,12 +1,12 @@
-import { expect, test, type Page } from '@playwright/test';
-import { readFileSync, mkdirSync } from 'fs';
+import { expect, test } from '@playwright/test';
+import { mkdirSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
+import { mockGithubBacklogFetch } from '../helpers/mock-github.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const BACKLOG_PATH = join(__dirname, '..', '..', '..', '..', 'BACKLOG.md');
 const SCREENSHOTS_DIR = join(
   __dirname,
   '..',
@@ -19,28 +19,6 @@ const SCREENSHOTS_DIR = join(
   'screenshots',
 );
 mkdirSync(SCREENSHOTS_DIR, { recursive: true });
-
-function encodeUtf8ToBase64(text: string): string {
-  return Buffer.from(text, 'utf8').toString('base64');
-}
-
-async function mockGithubBacklogFetch(page: Page): Promise<void> {
-  const text = readFileSync(BACKLOG_PATH, 'utf8');
-  const body = JSON.stringify({
-    type: 'file',
-    encoding: 'base64',
-    content: encodeUtf8ToBase64(text),
-    sha: '0123456789abcdef0123456789abcdef01234567',
-    path: 'BACKLOG.md',
-  });
-  await page.route('https://api.github.com/**/contents/BACKLOG.md*', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body,
-    });
-  });
-}
 
 /**
  * Story 2 — Edit a row from a phone or tablet (US2).
@@ -85,17 +63,16 @@ test.describe('Backlog Navigator — mobile interaction (US2)', () => {
     await expect(page.getByTestId('card-list')).toBeVisible({ timeout: 10000 });
 
     const firstCard = page.getByTestId(/^item-card-\d+$/).first();
-    const beforeStatus = (await firstCard.getByTestId('status-chip').textContent()) ?? '';
     await firstCard.getByTestId('status-chip').click();
 
     const sheet = page.getByTestId('bottom-sheet');
     await expect(sheet).toBeVisible();
 
-    // Pick a new status from the embedded StatusDropdown <select>. The
-    // value is constrained to EDITABLE_STATUS_VALUES; pick one that is
-    // very unlikely to match the current status.
+    // Pick a new status from the embedded StatusDropdown <select>.
+    // Fixture row 001 is `proposed`, so flipping to `approved` is a
+    // guaranteed change (no-op-free per #245).
     const select = sheet.locator('select[aria-label="Status"]');
-    const newStatus = beforeStatus.toLowerCase().includes('approved') ? 'specified' : 'approved';
+    const newStatus = 'approved';
     await select.selectOption(newStatus);
 
     // Save the edit.
@@ -140,14 +117,13 @@ test.describe('Backlog Navigator — mobile interaction (US2)', () => {
     await expect(page.getByTestId('card-list')).toBeVisible({ timeout: 10000 });
 
     const firstCard = page.getByTestId(/^item-card-\d+$/).first();
-    const beforeStatus = (await firstCard.getByTestId('status-chip').textContent()) ?? '';
     await firstCard.getByTestId('status-chip').click();
     const sheet = page.getByTestId('bottom-sheet');
     await expect(sheet).toBeVisible();
 
     const select = sheet.locator('select[aria-label="Status"]');
-    const newStatus = beforeStatus.toLowerCase().includes('approved') ? 'specified' : 'approved';
-    await select.selectOption(newStatus);
+    // Fixture row 001 is `proposed` → `approved` is a guaranteed change.
+    await select.selectOption('approved');
 
     // Cancel — the dialog should appear because the value changed.
     await sheet.getByTestId('bottom-sheet-cancel').click();
