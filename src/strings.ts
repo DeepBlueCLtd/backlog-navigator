@@ -113,4 +113,11 @@ export const strings = {
   defaults: {
     prBodyPrefix: 'Backlog edits via Backlog Navigator.\n\n',
   },
+  lazy: {
+    skeletonAriaLabel: 'Loading mobile card list',
+    chunkErrorTitle: "Couldn't load that part of the app",
+    chunkErrorMessage:
+      'A required piece of the navigator failed to download — usually because a fresh deploy invalidated the previous version, or your network dropped. Reload to fetch the latest build.',
+    chunkErrorReload: 'Reload',
+  },
 } as const;

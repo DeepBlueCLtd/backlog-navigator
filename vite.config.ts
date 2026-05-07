@@ -66,6 +66,10 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true,
+    // Emit dist/.vite/manifest.json so the bundle-size guard can identify
+    // the desktop entry chunk after #247's lazy boundaries split off the
+    // mobile subtree (see specs/247-lazy-mobile-bundle/contracts/bundle-budget-cli.md).
+    manifest: true,
   },
   define: {
     'import.meta.env.VITE_BACKLOG_NAV_DRY_RUN': JSON.stringify(

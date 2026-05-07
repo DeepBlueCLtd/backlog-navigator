@@ -1,0 +1,82 @@
+/*
+ * Mobile-skeleton CSS for #247 — paints during the lazy-load gap on
+ * narrow viewports. Mimics the geometry of the eventual ItemCard so the
+ * transition from skeleton to real cards is visually calm.
+ */
+
+.mobile-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 8px 96px 8px;
+}
+
+.mobile-skeleton__card {
+  background: var(--card-bg, #ffffff);
+  border: 1px solid var(--card-border, #e0e0e0);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 76px;
+}
+
+.mobile-skeleton__line {
+  height: 12px;
+  border-radius: 3px;
+  background: linear-gradient(
+    90deg,
+    var(--skeleton-bg-start, #ececec) 25%,
+    var(--skeleton-bg-mid, #f6f6f6) 50%,
+    var(--skeleton-bg-start, #ececec) 75%
+  );
+  background-size: 200% 100%;
+  animation: mobile-skeleton-shimmer 1.5s ease-in-out infinite;
+}
+
+.mobile-skeleton__line--title {
+  width: 65%;
+  height: 16px;
+}
+
+.mobile-skeleton__line--meta {
+  width: 40%;
+  height: 10px;
+}
+
+.mobile-skeleton__line--body {
+  width: 90%;
+  height: 12px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .mobile-skeleton__card {
+    background: var(--card-bg, #1f1f1f);
+    border-color: var(--card-border, #2d2d2d);
+  }
+  .mobile-skeleton__line {
+    background: linear-gradient(
+      90deg,
+      var(--skeleton-bg-start, #2d2d2d) 25%,
+      var(--skeleton-bg-mid, #3a3a3a) 50%,
+      var(--skeleton-bg-start, #2d2d2d) 75%
+    );
+    background-size: 200% 100%;
+  }
+}
+
+@keyframes mobile-skeleton-shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-skeleton__line {
+    animation: none;
+  }
+}

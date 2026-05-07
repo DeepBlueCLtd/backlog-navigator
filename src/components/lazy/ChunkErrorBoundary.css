@@ -1,0 +1,63 @@
+/*
+ * ChunkErrorBoundary recovery panel — visible only when a lazy import
+ * fails (typically a stale-deploy chunk URL or a network drop). Styling
+ * is intentionally bold so the failure is immediately legible.
+ */
+
+.chunk-error-boundary {
+  margin: 16px;
+  padding: 16px 20px;
+  border: 1px solid var(--error-border, #d33);
+  border-radius: 8px;
+  background: var(--error-bg, #fff5f5);
+  color: var(--error-fg, #7a1818);
+}
+
+.chunk-error-boundary__title {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.chunk-error-boundary__message {
+  margin: 0 0 16px 0;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.chunk-error-boundary__reload {
+  min-height: 44px;
+  min-width: 120px;
+  padding: 8px 16px;
+  border: 1px solid var(--error-border, #d33);
+  border-radius: 4px;
+  background: var(--error-bg, #fff5f5);
+  color: var(--error-fg, #7a1818);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.chunk-error-boundary__reload:hover,
+.chunk-error-boundary__reload:focus-visible {
+  background: var(--error-fg, #7a1818);
+  color: var(--error-bg, #fff5f5);
+  outline: 2px solid var(--error-border, #d33);
+  outline-offset: 2px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .chunk-error-boundary {
+    background: var(--error-bg, #2a1a1a);
+    color: var(--error-fg, #ff8a8a);
+  }
+  .chunk-error-boundary__reload {
+    background: var(--error-bg, #2a1a1a);
+    color: var(--error-fg, #ff8a8a);
+  }
+  .chunk-error-boundary__reload:hover,
+  .chunk-error-boundary__reload:focus-visible {
+    background: var(--error-fg, #ff8a8a);
+    color: var(--error-bg, #2a1a1a);
+  }
+}

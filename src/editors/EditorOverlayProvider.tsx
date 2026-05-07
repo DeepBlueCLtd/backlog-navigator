@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useIsMobile } from '@debrief/components/hooks/useIsMobile';
 import { useStore } from '../state/store';
 import { todayIso } from '../state/pendingEdits';
@@ -16,8 +16,18 @@ import {
   useEditorOverlay,
   type EditorOverlayContextValue,
 } from './EditorOverlayContext';
-import { BottomSheetEditor } from '../components/mobile/BottomSheetEditor';
-import { DescriptionEditorScreen } from '../components/mobile/DescriptionEditorScreen';
+
+// Mobile editors split off into the same chunk as App.tsx's mobile imports
+// (#247). Mounting is gated on `isMobile` so the desktop user never triggers
+// the dynamic import.
+const BottomSheetEditor = lazy(() =>
+  import('../components/mobile/BottomSheetEditor').then((m) => ({ default: m.BottomSheetEditor })),
+);
+const DescriptionEditorScreen = lazy(() =>
+  import('../components/mobile/DescriptionEditorScreen').then((m) => ({
+    default: m.DescriptionEditorScreen,
+  })),
+);
 
 const MOBILE_BREAKPOINT_MAX = 1023;
 
@@ -342,8 +352,12 @@ export function EditorOverlayProvider({
   return (
     <EditorOverlayContext.Provider value={value}>
       {children}
-      <BottomSheetEditor />
-      <DescriptionEditorScreen />
+      {isMobile ? (
+        <Suspense fallback={null}>
+          <BottomSheetEditor />
+          <DescriptionEditorScreen />
+        </Suspense>
+      ) : null}
       {discardPrompt.open ? <DiscardConfirmModal /> : null}
     </EditorOverlayContext.Provider>
   );

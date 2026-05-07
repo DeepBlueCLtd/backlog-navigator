@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { useIsMobile } from '@debrief/components/hooks/useIsMobile';
 import { StoreProvider, useStore, useStoreState } from './state/store';
 import { detectDeploymentMode, detectPrNumber } from './state/deploymentMode';
@@ -16,10 +16,24 @@ import { PRModeBanner } from './components/PRModeBanner';
 import { StatusBanner } from './components/StatusBanner';
 import { AuthPrompt } from './components/AuthPrompt';
 import { EditorOverlayProvider } from './editors/EditorOverlayProvider';
-import { CardList } from './components/mobile/CardList';
-import { MobileFilterBar } from './components/mobile/MobileFilterBar';
-import { StickyPushBar } from './components/mobile/StickyPushBar';
+import { ChunkErrorBoundary } from './components/lazy/ChunkErrorBoundary';
+import { MobileSkeleton } from './components/lazy/MobileSkeleton';
 import { UpdatePrompt } from './pwa/UpdatePrompt';
+
+// Mobile subtree split off into its own chunk (#247). Desktop visitors do
+// not pay for these modules; mobile visitors fetch the chunk once on cold
+// load and the editors mount lazily on first activation. The static
+// imports are intentionally absent from this file — keeping them here would
+// pull the modules back into the entry chunk.
+const CardList = lazy(() =>
+  import('./components/mobile/CardList').then((m) => ({ default: m.CardList })),
+);
+const MobileFilterBar = lazy(() =>
+  import('./components/mobile/MobileFilterBar').then((m) => ({ default: m.MobileFilterBar })),
+);
+const StickyPushBar = lazy(() =>
+  import('./components/mobile/StickyPushBar').then((m) => ({ default: m.StickyPushBar })),
+);
 
 const MOBILE_BREAKPOINT_MAX = 1023;
 
@@ -152,11 +166,13 @@ function AppShell(): JSX.Element {
 
       {state.status === 'loaded' && projected ? (
         isMobile ? (
-          <>
-            <MobileFilterBar onOpenSettings={toggleAuthPanel} />
-            <CardList doc={projected} />
-            <StickyPushBar onPushChanges={() => setShowPushDialog(true)} />
-          </>
+          <ChunkErrorBoundary>
+            <Suspense fallback={<MobileSkeleton />}>
+              <MobileFilterBar onOpenSettings={toggleAuthPanel} />
+              <CardList doc={projected} />
+              <StickyPushBar onPushChanges={() => setShowPushDialog(true)} />
+            </Suspense>
+          </ChunkErrorBoundary>
         ) : (
           <>
             <FilterBar doc={projected} onOpenSettings={toggleAuthPanel} />
