@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
+  "packageManager": "pnpm@9.15.5",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
@@ -15,7 +16,6 @@
     "lint": "eslint src --ext .ts,.tsx"
   },
   "dependencies": {
-    "@debrief/components": "workspace:*",
     "@tanstack/react-virtual": "^3.0.0",
     "diff": "^5.2.0",
     "react": "^18.2.0",

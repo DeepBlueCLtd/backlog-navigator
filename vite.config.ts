@@ -5,15 +5,17 @@ import { VitePWA } from 'vite-plugin-pwa';
 import { validateManifest } from './src/pwa/manifestSchema';
 
 const manifest = validateManifest({
-  name: 'Debrief Backlog Navigator',
-  short_name: 'Backlog',
-  description: 'Edit the Debrief project backlog from any device.',
+  name: process.env.VITE_APP_NAME ?? 'Debrief Backlog Navigator',
+  short_name: process.env.VITE_APP_SHORT_NAME ?? 'Backlog',
+  description:
+    process.env.VITE_APP_DESCRIPTION ??
+    'Edit the Debrief project backlog from any device.',
   start_url: '/',
   scope: '/',
   display: 'standalone',
   orientation: 'any',
-  theme_color: '#1f1f1f',
-  background_color: '#ffffff',
+  theme_color: process.env.VITE_THEME_COLOR ?? '#1f1f1f',
+  background_color: process.env.VITE_BG_COLOR ?? '#ffffff',
   icons: [
     {
       src: 'icon-192.png',

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { useIsMobile } from '@debrief/components/hooks/useIsMobile';
+import { useIsMobile } from '../hooks/useIsMobile';
 import { useStore } from '../state/store';
 import { todayIso } from '../state/pendingEdits';
 import {

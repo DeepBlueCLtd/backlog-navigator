@@ -22,8 +22,8 @@ import {
   type RefResponse,
 } from './schemas';
 
-export const DEFAULT_OWNER = 'debrief';
-export const DEFAULT_REPO = 'debrief-future';
+import { DEFAULT_OWNER, DEFAULT_REPO } from '../defaults';
+export { DEFAULT_OWNER, DEFAULT_REPO };
 const API_ROOT = 'https://api.github.com';
 
 export class GitHubError extends Error {

@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { useIsMobile } from '@debrief/components/hooks/useIsMobile';
+import { useIsMobile } from './hooks/useIsMobile';
 import { StoreProvider, useStore, useStoreState } from './state/store';
 import { detectDeploymentMode, detectPrNumber } from './state/deploymentMode';
 import { getPullRequest, readBacklogMd, configureClient } from './github/api';

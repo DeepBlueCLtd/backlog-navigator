@@ -3,6 +3,15 @@
  * Future translation: replace the default export with a locale-resolving function.
  */
 
+import { PROD_HOST } from './defaults';
+
+/**
+ * Production host string for the deployed app. Adopters override via
+ * `VITE_PROD_HOST` at build time; defaults to `debrief.github.io`.
+ * See specs/249-extract-backlog-navigator/data-model.md.
+ */
+export const host: string = PROD_HOST;
+
 export const strings = {
   app: {
     title: 'Backlog Navigator',

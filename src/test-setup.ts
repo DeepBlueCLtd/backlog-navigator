@@ -1,6 +1,6 @@
 // Vitest setup — jsdom polyfills.
 //
-// `useIsMobile` (from @debrief/components) calls `window.matchMedia`,
+// `useIsMobile` (now inlined at src/hooks/useIsMobile.ts; #249) calls `window.matchMedia`,
 // which jsdom does not implement out of the box. The polyfill below
 // returns a stable "no media query matched" object that satisfies the
 // MediaQueryList shape; tests that need to drive the breakpoint pass
