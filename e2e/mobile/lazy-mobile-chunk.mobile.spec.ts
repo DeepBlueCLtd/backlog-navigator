@@ -95,7 +95,7 @@ test.describe('Lazy mobile chunk (#247)', () => {
 
     // The desktop layout is rendered. Confirm nothing matching a mobile
     // chunk filename was fetched.
-    const mobileChunkPattern = /\/assets\/(CardList|MobileFilterBar|StickyPushBar|BottomSheetEditor|DescriptionEditorScreen)-[A-Za-z0-9]+\.js$/;
+    const mobileChunkPattern = /\/assets\/(CardList|MobileFilterBar|StickyPushBar|BottomSheetEditor|DescriptionEditorScreen)-[A-Za-z0-9_-]+\.js$/;
     const offenders = requestedUrls.filter((u) => mobileChunkPattern.test(u));
     expect(offenders, `mobile chunks should not load on desktop; offenders=${JSON.stringify(offenders)}`).toEqual([]);
   });
@@ -108,7 +108,7 @@ test.describe('Lazy mobile chunk (#247)', () => {
 
     // Make the CardList chunk URL unreachable — emulates a stale-deploy
     // chunk that Workbox precache cannot serve.
-    await page.route(/\/assets\/CardList-[A-Za-z0-9]+\.js$/, async (route) => {
+    await page.route(/\/assets\/CardList-[A-Za-z0-9_-]+\.js$/, async (route) => {
       await route.fulfill({ status: 404, body: 'gone' });
     });
 
