@@ -1,0 +1,82 @@
+{
+  "../../../../../@vite-plugin-pwa/virtual:pwa-register": {
+    "file": "assets/virtual_pwa-register-Cwiyxl_Y.js",
+    "name": "virtual_pwa-register",
+    "src": "../../../../../@vite-plugin-pwa/virtual:pwa-register",
+    "isDynamicEntry": true,
+    "imports": [
+      "index.html"
+    ],
+    "dynamicImports": [
+      "node_modules/.pnpm/workbox-window@7.4.1/node_modules/workbox-window/build/workbox-window.prod.es5.mjs"
+    ]
+  },
+  "index.html": {
+    "file": "assets/index-Ve5e9EIJ.js",
+    "name": "index",
+    "src": "index.html",
+    "isEntry": true,
+    "dynamicImports": [
+      "src/components/mobile/BottomSheetEditor.tsx",
+      "src/components/mobile/DescriptionEditorScreen.tsx",
+      "src/components/mobile/CardList.tsx",
+      "src/components/mobile/MobileFilterBar.tsx",
+      "src/components/mobile/StickyPushBar.tsx",
+      "../../../../../@vite-plugin-pwa/virtual:pwa-register"
+    ],
+    "css": [
+      "assets/index-CBJNSZbv.css"
+    ]
+  },
+  "node_modules/.pnpm/workbox-window@7.4.1/node_modules/workbox-window/build/workbox-window.prod.es5.mjs": {
+    "file": "assets/workbox-window.prod.es5-BqEJf4Xk.js",
+    "name": "workbox-window.prod.es5",
+    "src": "node_modules/.pnpm/workbox-window@7.4.1/node_modules/workbox-window/build/workbox-window.prod.es5.mjs",
+    "isDynamicEntry": true
+  },
+  "src/components/mobile/BottomSheetEditor.tsx": {
+    "file": "assets/BottomSheetEditor-dWHLCekb.js",
+    "name": "BottomSheetEditor",
+    "src": "src/components/mobile/BottomSheetEditor.tsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "index.html"
+    ]
+  },
+  "src/components/mobile/CardList.tsx": {
+    "file": "assets/CardList-Cd_x-GQH.js",
+    "name": "CardList",
+    "src": "src/components/mobile/CardList.tsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "index.html"
+    ]
+  },
+  "src/components/mobile/DescriptionEditorScreen.tsx": {
+    "file": "assets/DescriptionEditorScreen-Bi2inp3r.js",
+    "name": "DescriptionEditorScreen",
+    "src": "src/components/mobile/DescriptionEditorScreen.tsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "index.html"
+    ]
+  },
+  "src/components/mobile/MobileFilterBar.tsx": {
+    "file": "assets/MobileFilterBar-DQz4D1kN.js",
+    "name": "MobileFilterBar",
+    "src": "src/components/mobile/MobileFilterBar.tsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "index.html"
+    ]
+  },
+  "src/components/mobile/StickyPushBar.tsx": {
+    "file": "assets/StickyPushBar-C4E6Cchg.js",
+    "name": "StickyPushBar",
+    "src": "src/components/mobile/StickyPushBar.tsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "index.html"
+    ]
+  }
+}
