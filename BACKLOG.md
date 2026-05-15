@@ -19,6 +19,7 @@ To replace with your own backlog, edit this file and re-deploy.
 | 006 | Documentation | Bundled dummy item — *no epic*, exercises the `(unassigned)` epic group. | 1 | 1 | 3 | 5 | Low | approved |  | 2026-02-01 | 2026-02-08 |
 | ~~007~~ | ~~Feature~~ | ~~[[E01]] Bundled dummy item — complete (strikethrough rendering test).~~ | ~~3~~ | ~~3~~ | ~~3~~ | ~~9~~ | ~~Medium~~ | ~~complete~~ |  | ~~2026-02-10~~ | ~~2026-02-20~~ |
 | 008 | Research Spike | [[E03]] Bundled dummy item with an `escaped \| pipe` and **bold inline markup** to exercise parser edge cases. | 2 | 3 | 2 | 7 | Medium | proposed |  | 2026-03-01 | 2026-03-01 |
+| 009 | Feature | [[E01]] Smoke-test item added on a PR branch — exercises pr-preview.yml so the preview tree visibly differs from main. | 1 | 1 | 1 | 3 | Low | proposed |  | 2026-05-15 | 2026-05-15 |
 
 ## Epics
 
