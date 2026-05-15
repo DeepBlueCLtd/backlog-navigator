@@ -59,6 +59,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Install Playwright ffmpeg (chromium comes from @sparticuz/chromium)
+        run: pnpm exec playwright install ffmpeg
+
       - name: Build (for preview server)
         run: pnpm build
 
