@@ -64,7 +64,7 @@ jobs:
               `🚀 **Backlog Navigator preview deployed**\n\n` +
               `- Default view: ${previewUrl}\n` +
               `- Same repo, branch: ${previewUrl}?repo=DeepBlueCLtd/backlog-navigator&branch=<branch>\n` +
-              `- Legacy \\`?pr=\\` form (resolves against bundled default OWNER/REPO):\n` +
+              `- Legacy \`?pr=\` form (resolves against bundled default OWNER/REPO):\n` +
               `  ${previewUrl}?pr=42\n` +
               `- Third-party adopter form: ${previewUrl}?repo=acme/foo&branch=main\n\n` +
               `This preview runs in **dry-run mode** — "Push Changes" is a no-op.`;
