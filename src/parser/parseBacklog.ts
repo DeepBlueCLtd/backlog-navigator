@@ -290,18 +290,38 @@ export function parseBacklog(text: string): BacklogDocument {
 
   // Find Epics header
   let epicsHeaderIdx = -1;
+  let firstTableLikeLine: { lineNumber: number; content: string } | undefined;
   for (let i = 0; i < lines.length; i++) {
-    if (isHeader(lines[i] as string, EPICS_HEADER_COLUMNS)) {
+    const line = lines[i] as string;
+    if (isHeader(line, EPICS_HEADER_COLUMNS)) {
       epicsHeaderIdx = i;
       break;
     }
+    if (!firstTableLikeLine && line.trim().startsWith('|')) {
+      firstTableLikeLine = { lineNumber: i + 1, content: line };
+    }
   }
   if (epicsHeaderIdx === -1) {
-    throw new Error('parseBacklog: Epics header row not found');
+    const expected = '| ' + EPICS_HEADER_COLUMNS.join(' | ') + ' |';
+    const lines2 = [
+      'Epics header row not found.',
+      `Expected: ${expected}`,
+      'Hint: the Epics table must come before the Items table, with a header row exactly matching the four columns above.',
+    ];
+    if (firstTableLikeLine) {
+      lines2.push(`First table-like line seen was line ${firstTableLikeLine.lineNumber}: ${firstTableLikeLine.content}`);
+    }
+    throw new Error(lines2.join('\n'));
   }
   const epicsSeparatorIdx = epicsHeaderIdx + 1;
   if (!isSeparator(lines[epicsSeparatorIdx] as string, EPICS_HEADER_COLUMNS.length)) {
-    throw new Error('parseBacklog: Epics separator row not found at expected position');
+    throw new Error(
+      [
+        `Epics separator row not found at line ${epicsSeparatorIdx + 1}.`,
+        `Expected: |---|---|---|---|  (four dashed cells, one per Epics column)`,
+        `Got: ${lines[epicsSeparatorIdx] ?? '(end of file)'}`,
+      ].join('\n'),
+    );
   }
 
   // Find end of Epics body
@@ -320,11 +340,24 @@ export function parseBacklog(text: string): BacklogDocument {
     }
   }
   if (itemsHeaderIdx === -1) {
-    throw new Error('parseBacklog: Items header row not found (post-refactor 12-column format)');
+    const expected = '| ' + ITEMS_HEADER_COLUMNS.join(' | ') + ' |';
+    throw new Error(
+      [
+        `Items header row not found (looked from line ${epicsEndIdx + 1} onwards).`,
+        `Expected the 12-column header: ${expected}`,
+        'Hint: column 7 must be exactly "Total" (not "V·M·A" or any other decorative form).',
+      ].join('\n'),
+    );
   }
   const itemsSeparatorIdx = itemsHeaderIdx + 1;
   if (!isSeparator(lines[itemsSeparatorIdx] as string, ITEMS_HEADER_COLUMNS.length)) {
-    throw new Error('parseBacklog: Items separator row not found at expected position');
+    throw new Error(
+      [
+        `Items separator row not found at line ${itemsSeparatorIdx + 1}.`,
+        `Expected: |---|---|---|---|---|---|---|---|---|---|---|---|  (twelve dashed cells, one per Items column)`,
+        `Got: ${lines[itemsSeparatorIdx] ?? '(end of file)'}`,
+      ].join('\n'),
+    );
   }
 
   let itemsEndIdx = itemsSeparatorIdx + 1;

@@ -66,6 +66,7 @@ body {
   padding: 8px 16px;
   border-bottom: 1px solid var(--border);
   font-size: 13px;
+  white-space: pre-line;
 }
 .banner.warn { background: var(--warn-bg); color: var(--warn-fg); }
 .banner.error { background: var(--error-bg); color: var(--error-fg); }
