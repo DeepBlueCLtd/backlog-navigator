@@ -9,9 +9,64 @@ extracted from `debrief/debrief-future` (`apps/backlog-navigator/`) so
 any project with a `BACKLOG.md` and speckit can adopt it without
 depending on the source monorepo.
 
+Try the public instance with the bundled dummy backlog:
+<https://DeepBlueCLtd.github.io/backlog-navigator/>
+
 ---
 
-## Quickstart
+## What it offers
+
+- **Mobile-first triage.** A card list with bottom-sheet editors on
+  phones; a virtualised 12-column table on desktop. Both share the same
+  parser, state, and push pipeline.
+- **Sort, filter, group.** Per-column sort, filter by status / category /
+  epic / complexity, group-by-epic, free-text search, show/hide
+  completed items.
+- **Inline editing with pending-state.** Edit cells, expand
+  descriptions, see a dirty-count badge. Nothing leaves the browser
+  until you click *Push Changes*.
+- **PR-based writes.** A push creates a branch and opens a pull request
+  in your repo. The navigator never force-pushes and never writes
+  directly to `main`.
+- **Strict round-trip parser.** Parsing then serialising
+  `BACKLOG.md` returns the byte-identical input — no lossy edits,
+  diffs stay reviewable.
+- **Zero backend.** A static SPA. GitHub PATs live only in
+  `localStorage` and reads work anonymously against the 60 req/hr
+  public rate limit.
+- **PWA / offline-friendly.** Installable on phone or desktop, with a
+  service worker and update prompt.
+- **Per-PR previews.** Every PR against this repo gets its own preview
+  URL via a sticky comment.
+
+---
+
+## Adopt it for your project
+
+If you have a repo with a `BACKLOG.md` (or are willing to add one), you
+can be triaging it through the navigator in minutes. See
+**[ADOPTING.md](ADOPTING.md)** for the full guide; the short version:
+
+- **Path 1 — Zero infrastructure.** Add a `BACKLOG.md` to your repo
+  and share `https://deepbluecltd.github.io/backlog-navigator/?repo=<your-org>/<your-repo>&branch=main`.
+  No fork, no hosting.
+- **Path 2 — Fork and self-host** on your own GitHub Pages if you want
+  your own branded instance or your org policy prohibits third-party
+  hosting.
+- **Path 3 — Sticky PR comments** (combines with 1 or 2). Drop
+  [`docs/consumer-workflows/backlog-comment.yml`](docs/consumer-workflows/backlog-comment.yml)
+  into your repo's `.github/workflows/` to auto-comment a navigator
+  link on every PR that touches `BACKLOG.md`.
+
+[ADOPTING.md](ADOPTING.md) also documents the `BACKLOG.md` format the
+parser expects (Epics table, Items table, column shapes, status
+lozenges).
+
+---
+
+## Develop locally
+
+For working on the navigator codebase itself:
 
 ```sh
 git clone git@github.com:DeepBlueCLtd/backlog-navigator.git
