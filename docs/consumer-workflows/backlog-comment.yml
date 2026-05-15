@@ -1,0 +1,89 @@
+# Drop this file into YOUR project's .github/workflows/backlog-comment.yml
+# (NOT into the backlog-navigator repo itself).
+#
+# It posts a sticky comment on every PR in your repo that touches
+# BACKLOG.md, with a link to the navigator pre-keyed to that PR. The
+# navigator reads the PR's head branch live from the GitHub API, so no
+# per-PR build is required.
+#
+# Before committing, edit the NAVIGATOR_URL constant below to point at
+# the navigator instance you want to use.
+
+name: Backlog Navigator Comment
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'BACKLOG.md'
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  comment:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post or update Backlog Navigator comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // === EDIT ME ===
+            // Point at whichever navigator instance you want reviewers to use.
+            // Examples:
+            //   Public hosted:  https://deepbluecltd.github.io/backlog-navigator/
+            //   Your fork:      https://your-org.github.io/your-fork-name/
+            const NAVIGATOR_URL = 'https://deepbluecltd.github.io/backlog-navigator/';
+
+            const prNumber = context.payload.pull_request.number;
+            const headSha = context.payload.pull_request.head.sha;
+            const marker = '<!-- backlog-navigator-comment -->';
+
+            // The ?pr= form resolves the PR against the navigator's bundled
+            // default OWNER/REPO. If you're pointing at the public hosted
+            // instance, you'll want the ?repo=&branch= form so the navigator
+            // looks up YOUR repo, not the bundled default:
+            //
+            //   const navUrl = `${NAVIGATOR_URL}?repo=${context.repo.owner}/${context.repo.repo}` +
+            //                  `&branch=${context.payload.pull_request.head.ref}`;
+            //
+            // If you're self-hosting (your fork's default OWNER/REPO is your
+            // own repo), the simpler ?pr= form works:
+            const navUrl = `${NAVIGATOR_URL}?pr=${prNumber}`;
+
+            const body = [
+              marker,
+              '## 📋 Backlog Navigator',
+              '',
+              "Review this PR's BACKLOG.md edits interactively:",
+              '',
+              `👉 **[Open in Backlog Navigator](${navUrl})**`,
+              '',
+              `<sub>Updated for ${headSha.substring(0, 7)} — the navigator reads BACKLOG.md live from this PR's head branch, so no rebuild is needed.</sub>`,
+            ].join('\n');
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+            });
+            const existing = comments.find((c) => c.body && c.body.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+              core.info(`Updated comment ${existing.id}`);
+            } else {
+              const { data: created } = await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body,
+              });
+              core.info(`Created comment ${created.id}`);
+            }
