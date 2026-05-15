@@ -1,5 +1,10 @@
 node_modules/
 dist/
-test-results/
 playwright-report/
+test-results/
 .chromium-path
+.lighthouseci/
+.env
+.env.local
+.DS_Store
+*.log

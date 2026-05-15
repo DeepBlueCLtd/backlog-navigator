@@ -1,0 +1,92 @@
+name: Lighthouse PWA gate
+
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'public/**'
+      - 'vite.config.ts'
+      - '.lighthouserc.json'
+      - '.github/workflows/lighthouse.yml'
+  workflow_dispatch:
+
+# Minimum-scope GITHUB_TOKEN. Lighthouse-CI only needs to read source; the
+# optional LHCI_GITHUB_APP_TOKEN handles PR status checks via a separate
+# auth path. See SECURITY.md "Workflow security baseline".
+permissions:
+  contents: read
+
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Chrome (required by Lighthouse CI)
+        uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
+
+      - name: Build
+        run: pnpm build
+        env:
+          # Manifest scope ('/') matches the served path during audit.
+          VITE_BASE_URL: '/'
+
+      - name: Start preview server (detached)
+        run: |
+          mkdir -p /tmp/preview
+          nohup pnpm preview --port 5175 --host 0.0.0.0 \
+            > /tmp/preview/server.log 2>&1 &
+          echo $! > /tmp/preview/server.pid
+          disown
+        env:
+          NODE_ENV: production
+          VITE_BASE_URL: '/'
+
+      - name: Wait for server
+        run: |
+          for i in {1..60}; do
+            if curl -sf http://localhost:5175/ > /dev/null; then
+              echo "Server is up after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Server did not start in 60s. Last 50 lines of /tmp/preview/server.log:"
+          tail -n 50 /tmp/preview/server.log || echo "(no log file)"
+          exit 1
+
+      - name: Run Lighthouse CI
+        run: pnpm dlx @lhci/cli@0.13.0 autorun --config ./.lighthouserc.json
+        env:
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.LHCI_GITHUB_APP_TOKEN }}
+
+      - name: Stop preview server
+        if: always()
+        run: |
+          if [ -f /tmp/preview/server.pid ]; then
+            kill "$(cat /tmp/preview/server.pid)" 2>/dev/null || true
+          fi
+
+      - name: Upload Lighthouse report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-report
+          path: |
+            .lighthouseci/
+            dist/manifest.webmanifest
+            /tmp/preview/server.log
+          retention-days: 7

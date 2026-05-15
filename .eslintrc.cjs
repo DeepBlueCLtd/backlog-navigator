@@ -1,8 +1,11 @@
-const { rules: utilsDriftRules } = require('../../shared/eslint-rules/no-redeclare-utils-exports.cjs');
-const { rules: schemasDriftRules } = require('../../shared/eslint-rules/no-redeclare-schemas-exports.cjs');
-const { rules: componentsDriftRules } = require('../../shared/eslint-rules/no-redeclare-components-exports.cjs');
-const { rules: sessionStateDriftRules } = require('../../shared/eslint-rules/no-redeclare-session-state-exports.cjs');
-const { rules: dataDriftRules } = require('../../shared/eslint-rules/no-redeclare-data-exports.cjs');
+// Standalone ESLint configuration for DeepBlueCLtd/backlog-navigator.
+//
+// Originally inherited monorepo-shared drift rules from
+// debrief/debrief-future's shared/eslint-rules/. After extraction the
+// drift guards (which exist to prevent re-declaring shared workspace
+// exports) are no longer relevant — this repo carries its own copy of
+// useIsMobile (R-007) with a provenance comment, and depends on no
+// other @debrief/* surfaces.
 
 module.exports = {
   root: true,
@@ -43,14 +46,9 @@ module.exports = {
         objectLiteralTypeAssertions: 'never',
       },
     ],
-    '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
-    'no-restricted-syntax': [
-      'error',
-      ...utilsDriftRules,
-      ...schemasDriftRules,
-      ...componentsDriftRules,
-      ...sessionStateDriftRules,
-      ...dataDriftRules,
+    '@typescript-eslint/no-unused-vars': [
+      'warn',
+      { argsIgnorePattern: '^_' },
     ],
   },
 };

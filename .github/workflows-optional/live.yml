@@ -1,0 +1,59 @@
+# OPTIONAL drift-detection workflow.
+#
+# To enable: copy this file to .github/workflows/live.yml and supply a
+# `LIVE_GITHUB_TOKEN` Actions secret (fine-grained PAT with read-only
+# scopes on `contents` + `metadata` for the target repo).
+#
+# When to enable:
+#   - A schema drift was observed in production that the mocked tests missed.
+#   - A third-party adopter reports their use of the SPA breaking due to
+#     an unmocked API change.
+#
+# Most adopters do NOT need this. The in-process Playwright route mock
+# (see e2e/mock-github.ts) provides full offline coverage. Live mode is
+# maintainer tooling for catching upstream API drift, not for the typical
+# CI gate.
+#
+# Spec ref: 249-extract-backlog-navigator R-015, FR-019.
+
+name: Live drift detection (optional)
+
+on:
+  schedule:
+    # Daily at 04:00 UTC.
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+
+jobs:
+  live-playwright:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Run Playwright (LIVE_GITHUB=1)
+        run: node run-playwright.mjs
+        env:
+          LIVE_GITHUB: '1'
+          GITHUB_TOKEN: ${{ secrets.LIVE_GITHUB_TOKEN }}
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-live-report
+          path: playwright-report/
+          retention-days: 7

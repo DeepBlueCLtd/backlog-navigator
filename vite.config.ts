@@ -33,7 +33,7 @@ const manifest = validateManifest({
 });
 
 export default defineConfig({
-  base: process.env.VITE_BASE_URL || '/debrief-future/backlog-navigator/',
+  base: process.env.VITE_BASE_URL || '/backlog-navigator/',
   plugins: [
     react(),
     VitePWA({
