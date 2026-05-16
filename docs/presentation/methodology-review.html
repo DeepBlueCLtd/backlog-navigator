@@ -34,7 +34,8 @@
     }
     .reveal pre.mermaid svg {
       max-width: 100% !important;
-      width: 100% !important;
+      max-height: 68vh !important;
+      width: auto !important;
       height: auto !important;
       display: block;
       margin: 0 auto;
@@ -365,9 +366,9 @@ sequenceDiagram
       svg.removeAttribute('height');
       svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
       svg.style.maxWidth = '100%';
-      svg.style.maxHeight = '70vh';
+      svg.style.maxHeight = '68vh';
+      svg.style.width = 'auto';
       svg.style.height = 'auto';
-      svg.style.width = '100%';
     });
   }
 
