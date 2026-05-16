@@ -27,9 +27,18 @@
       background: transparent;
       box-shadow: none;
       text-align: center;
-      font-size: 0.9em;
+      font-size: 0.85em;
+      width: 100%;
+      max-width: 100%;
+      margin: 0.3em auto;
     }
-    .reveal pre.mermaid svg { max-width: 100%; height: auto; }
+    .reveal pre.mermaid svg {
+      max-width: 100% !important;
+      width: 100% !important;
+      height: auto !important;
+      display: block;
+      margin: 0 auto;
+    }
     .reveal .footnote {
       font-size: 0.55em;
       color: #888;
@@ -334,8 +343,8 @@ sequenceDiagram
   mermaid.initialize({
     startOnLoad: false,
     theme: 'default',
-    flowchart: { htmlLabels: true, curve: 'basis' },
-    sequence:  { actorMargin: 40 }
+    flowchart: { htmlLabels: true, curve: 'basis', useMaxWidth: true },
+    sequence:  { actorMargin: 30, useMaxWidth: true, wrap: true, boxMargin: 8 }
   });
 
   Reveal.initialize({
