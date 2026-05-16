@@ -47,6 +47,25 @@ don't run in the orchestrator session.
 
 ---
 
+## Fast path: `scripts/setup-project.sh`
+
+If you want a one-command setup of steps 1–6 below (Project creation,
+fields, visibility, config file, issue template, auto-add workflow),
+run:
+
+```sh
+scripts/setup-project.sh <owner> <repo> [project-title]
+```
+
+It does what the API allows and prints the remaining manual UI steps
+(Status field options, built-in workflows, `PROJECT_TOKEN` secret).
+Skip ahead to **Step 7** after running it.
+
+If you'd rather walk through each step manually (recommended the first
+time, to understand what's happening), continue below.
+
+---
+
 ## Step 1 — Create the Project
 
 ```sh

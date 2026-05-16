@@ -575,6 +575,12 @@ output to a committed file — the methodology does not require it.
 
 For a repo adopting this methodology:
 
+> **Fast path**: this repo ships `scripts/setup-project.sh` which
+> handles steps 2, 5, 6 and the config file in one command:
+> `scripts/setup-project.sh <owner> <repo>`. It prints what remains
+> as manual UI steps (Status options, built-in workflows, the
+> `PROJECT_TOKEN` secret). Steps 1 and 7+ are still done by hand.
+
 1. **Install spec-kit** (see *Toolchain*). Commit `.claude/skills/` and
    `.specify/`.
 2. **Create the Project**. One per repo. Visibility: public. Configure
@@ -586,8 +592,9 @@ For a repo adopting this methodology:
 6. **Add the auto-add workflow** at
    `.github/workflows/add-to-project.yml` (see *Intake*).
 7. **Adopt the orchestrator**. Copy or reference
+   `.claude/skills/backlog-worker-start/SKILL.md` and
    `.claude/skills/backlog-poll/SKILL.md`, then run
-   `/loop 15m /backlog-poll` from a Claude Code session (local or
+   `/backlog-worker-start` from a Claude Code session (local or
    cloud).
 8. **Decide your Epic convention**. The methodology assumes Epics are
    parent issues using sub-issues. If your team uses milestones or
