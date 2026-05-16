@@ -70,6 +70,23 @@ opt_cmpx_high=$(get_option_id "Complexity" "High")
 echo "  ok"
 echo
 
+# ---------- pre-flight: warn about missing fields ----------
+missing=()
+[[ -z "$FIELD_STATUS"     ]] && missing+=("Status")
+[[ -z "$FIELD_PHASE"      ]] && missing+=("Phase")
+[[ -z "$FIELD_CATEGORY"   ]] && missing+=("Category")
+[[ -z "$FIELD_COMPLEXITY" ]] && missing+=("Complexity")
+[[ -z "$FIELD_V"          ]] && missing+=("V")
+[[ -z "$FIELD_M"          ]] && missing+=("M")
+[[ -z "$FIELD_A"          ]] && missing+=("A")
+[[ -z "$FIELD_TOTAL"      ]] && missing+=("Total")
+if (( ${#missing[@]} > 0 )); then
+  echo "WARNING: these expected fields are missing from Project #$PROJECT_NUMBER:" >&2
+  printf '  - %s\n' "${missing[@]}" >&2
+  echo "Their values will be skipped. Add them with gh project field-create and re-run if you want them set." >&2
+  echo >&2
+fi
+
 # ---------- helpers ----------
 
 # Add an issue (by number) to the project, return its project item ID
@@ -83,6 +100,7 @@ add_to_project() {
 set_select() {
   local item_id="$1" field_id="$2" option_id="$3"
   [[ -z "$option_id" || "$option_id" == "null" ]] && return 0
+  [[ -z "$field_id"  || "$field_id"  == "null" ]] && return 0
   gh project item-edit \
       --id "$item_id" --project-id "$PROJECT_ID" \
       --field-id "$field_id" --single-select-option-id "$option_id" >/dev/null
@@ -91,6 +109,7 @@ set_select() {
 set_number() {
   local item_id="$1" field_id="$2" value="$3"
   [[ -z "$value" ]] && return 0
+  [[ -z "$field_id" || "$field_id" == "null" ]] && return 0
   gh project item-edit \
       --id "$item_id" --project-id "$PROJECT_ID" \
       --field-id "$field_id" --number "$value" >/dev/null
