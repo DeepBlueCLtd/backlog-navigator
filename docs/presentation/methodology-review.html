@@ -199,25 +199,25 @@ flowchart LR
   <h2>The orchestration loop</h2>
 <pre class="mermaid">
 sequenceDiagram
-    participant L as /loop
-    participant P as /backlog-poll
-    participant GH as GitHub Project
-    participant SK as speckit phase
-    participant U as Maintainer (chat)
+    participant L as Loop
+    participant P as Poll
+    participant GH as Project
+    participant SK as Phase
+    participant U as User
 
-    L->>P: tick (every 15min)
-    P->>P: scan .claude/in-flight/
-    Note over P: skip tick if any lock exists
-    P->>GH: GraphQL — fetch all items
-    P->>GH: write back any drifted Total
-    P->>P: pick highest-priority outstanding item
-    P->>SK: read SKILL.md, follow Outline
-    alt blocked on question
+    L->>P: tick (15min)
+    P->>P: scan locks
+    Note over P: skip if locked
+    P->>GH: fetch state
+    P->>GH: write Phase + Total
+    P->>P: pick item
+    P->>SK: run speckit
+    alt blocked
         SK->>U: ask in chat
-        P->>P: write lock file, exit
+        P->>P: write lock, exit
     else completes
-        SK->>GH: open PR (Refs / Closes)
-        P->>U: 1-line summary
+        SK->>GH: open PR
+        P->>U: summary
     end
 </pre>
 </section>
@@ -354,14 +354,30 @@ sequenceDiagram
     width: 1280,
     height: 800,
     margin: 0.06
-  }).then(() => {
-    mermaid.run({ querySelector: 'pre.mermaid' });
+  }).then(async () => {
+    await mermaid.run({ querySelector: 'pre.mermaid' });
+    fitMermaidSvgs();
   });
 
+  function fitMermaidSvgs() {
+    document.querySelectorAll('pre.mermaid svg').forEach(svg => {
+      svg.removeAttribute('width');
+      svg.removeAttribute('height');
+      svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+      svg.style.maxWidth = '100%';
+      svg.style.maxHeight = '70vh';
+      svg.style.height = 'auto';
+      svg.style.width = '100%';
+    });
+  }
+
   // Re-render Mermaid on slide change if needed (some browsers re-paint oddly)
-  Reveal.on('slidechanged', () => {
+  Reveal.on('slidechanged', async () => {
     const unrendered = document.querySelectorAll('pre.mermaid:not([data-processed="true"])');
-    if (unrendered.length) mermaid.run({ nodes: unrendered });
+    if (unrendered.length) {
+      await mermaid.run({ nodes: unrendered });
+    }
+    fitMermaidSvgs();
   });
 </script>
 </body>
