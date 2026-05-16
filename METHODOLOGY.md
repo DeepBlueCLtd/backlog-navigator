@@ -10,6 +10,13 @@ It is a sibling to [`ADOPTING.md`](ADOPTING.md), which covers the
 markdown-based Backlog Navigator. The two approaches coexist in this
 repo today; this document captures the direction the project is moving.
 
+This repo doubles as the methodology's **testbed**. The
+[GitHub spec-kit](https://github.com/github/spec-kit) toolkit is
+installed here (`.claude/skills/`, `.specify/`), backlog items live
+in this repo's own Project, and the supporting orchestration command
+(`/backlog-poll`) is exercised against real work before being
+recommended to other repos.
+
 ---
 
 ## Why this exists
@@ -53,14 +60,51 @@ Items carry a small set of custom Project fields: **Category**,
 standard **Status**.
 
 **Epics** are parent issues. When a maintainer drags an Epic to
-**In Design**, a Claude Code agent interviews on the issue, drafts a
-spec PR, and decomposes the Epic into sub-issues. Non-Epic items get
-the same interview-then-spec-PR treatment. Moving a card to **Doing**
-fires a second agent that reads the linked spec and opens an
-implementation PR for human review.
+**In Design**, an agent runs the speckit phases on the parent issue —
+`/speckit-specify`, optionally `/speckit-clarify`, then `/speckit-plan`
+and `/speckit-tasks` — and finally invokes `/speckit-taskstoissues`,
+which files each generated task as a child sub-issue. Non-Epic items
+get the same specify-and-clarify treatment without the
+tasks-to-issues step. Moving a card to **Doing** invokes
+`/speckit-implement`, which opens an implementation PR for human review.
 
 The Project itself is publicly viewable — there is no separate
 `BACKLOG.md` to maintain.
+
+---
+
+## Toolchain
+
+This methodology composes on top of [GitHub spec-kit](https://github.com/github/spec-kit),
+which provides the per-phase skills the orchestrator drives:
+
+| Skill                       | Role                                                                 |
+|-----------------------------|----------------------------------------------------------------------|
+| `/speckit-constitution`     | (One-time, per repo.) Capture project principles.                    |
+| `/speckit-specify`          | Produce `specs/<NNN>-<slug>/spec.md` for an issue.                   |
+| `/speckit-clarify`          | *(Optional)* Pose structured clarifying questions before planning.   |
+| `/speckit-plan`             | Produce `plan.md` from the spec.                                     |
+| `/speckit-tasks`            | Produce `tasks.md` from the plan.                                    |
+| `/speckit-taskstoissues`    | File each task as a GitHub sub-issue of the parent (Epic flow).      |
+| `/speckit-implement`        | Implement the feature against the plan/tasks; open a PR.             |
+| `/speckit-analyze`          | *(Optional)* Cross-artefact consistency check.                       |
+| `/speckit-checklist`        | *(Optional)* Quality checklist for a spec / plan.                    |
+
+Install spec-kit in your repo once:
+
+```sh
+uv tool run --from git+https://github.com/github/spec-kit.git \
+    specify init . --integration claude --force
+```
+
+This adds `.claude/skills/speckit-*/` and `.specify/`; commit both —
+they are the source of truth for the per-phase workflow.
+
+Spec-kit skills are invocable both by humans (slash commands) and by
+other agents. The methodology uses both: maintainers drive intermediate
+phases by hand when they want fine control, and the orchestration
+agent (`/backlog-poll`) drives the bookend phases automatically on
+status change.
 
 ---
 
@@ -137,14 +181,21 @@ already enough to implement against — rare).
 
 ### In Design
 
-The item is being specified. A spec file is being produced.
+The item is being specified. Spec artefacts are being produced.
 
-**On entry**: a Claude Code agent is dispatched (see *Agent triggers*
-below). For non-Epic items, the agent posts clarifying questions on
-the issue and, once answered, opens a PR adding
-`specs/NNN-<slug>/spec.md`. For Epic parent issues, the agent
-additionally decomposes the Epic into sub-issues, each filed as a
-child of the parent.
+**On entry**: the orchestrator (`/backlog-poll`, see *Two implementation
+paths* below) invokes `/speckit-specify` against the issue, asking
+clarifying questions in chat where needed. For Epic parent issues it
+then runs `/speckit-plan`, `/speckit-tasks`, and `/speckit-taskstoissues`
+to decompose into child sub-issues. The output is a PR adding
+`specs/<NNN>-<slug>/spec.md` (and, for Epics, sub-issues filed on the
+parent).
+
+Maintainers may also drive intermediate speckit phases by hand
+(`/speckit-clarify`, `/speckit-plan`, `/speckit-tasks`,
+`/speckit-analyze`, `/speckit-checklist`) while the card sits in this
+state. The Project status doesn't try to mirror those finer-grained
+phases — the on-disk artefacts do.
 
 **Exit criteria**: the spec PR is merged. The issue body is updated
 (by the agent or maintainer) with a link to the merged spec file.
@@ -163,10 +214,11 @@ drags to **Doing**.
 
 Implementation is in flight.
 
-**On entry**: a Claude Code agent is dispatched. It reads the issue,
-follows the link to the spec, implements the change, and opens a PR
-ready for human review. The PR references the issue with a closing
-keyword (`Closes #NNN`).
+**On entry**: the orchestrator invokes `/speckit-implement` against
+the issue. The skill reads the spec, plan, and tasks; implements the
+change; runs project checks; and opens a PR referencing the issue with
+a closing keyword (`Closes #NNN`). The PR is opened in ready-for-review
+state — not draft — so human review is the next step.
 
 **Exit criteria**: the implementation PR is merged. The issue closes
 automatically, and the Project's built-in workflow moves the card to
@@ -244,11 +296,14 @@ item, but title it `[epic] <theme>` and (optionally) label it `epic`.
 The intake workflow puts it in Triage like any other issue.
 
 **Decomposition**: when a maintainer drags an Epic to **In Design**,
-the dispatched agent first interviews on the parent issue to clarify
-scope, then creates child sub-issues for each distinct work unit. Each
-child is added to the Project (also in Triage or In Design,
-depending on convention) and inherits the parent's Epic linkage
-through the sub-issue relationship.
+the orchestration agent runs `/speckit-specify` (and optionally
+`/speckit-clarify`) on the parent to lock down scope, then
+`/speckit-plan` and `/speckit-tasks` to produce a planned task list.
+Finally `/speckit-taskstoissues` files each task as a child sub-issue
+of the Epic. Each sub-issue is added to the Project in Triage, where it
+gets its own scoping (Category, scores, Complexity) before being
+dragged onward. Sub-issue linkage to the Epic is native — no labels or
+custom fields required.
 
 **Status independence**: once child sub-issues exist, each progresses
 through the state machine on its own. The Epic parent stays in
@@ -260,117 +315,156 @@ closed (GitHub enforces this automatically for sub-issues).
 
 ---
 
-## Agent triggers
+## Two implementation paths
 
-The methodology assumes status changes can trigger work. This
-section describes the **contract** for each trigger; the concrete
-agent prompt is project-specific.
+Status changes need to trigger speckit skills somehow. GitHub Actions
+does not expose `project_v2_item.edited` as a native workflow trigger,
+so adopters pick one of two architectures.
 
-A trigger is fired by a workflow that listens for Project status
-changes (via a `project_v2_item.edited` webhook through a GitHub App,
-or by polling) and dispatches a Claude Code session — for example via
-the Claude Code Action, or via a custom runner.
+### Path A — Polling from a long-lived Claude Code session
 
-### Trigger: Status → `In Design`
+Recommended default. Zero GitHub infrastructure beyond the Project
+itself; human-in-the-loop is native.
 
-**Input**:
-- The issue (title, body, comments).
-- Whether the issue is an Epic parent (has the `epic` label or is
-  referenced as a parent by other issues).
+A maintainer starts a Claude Code session (local or in the cloud) and
+runs:
 
-**Expected output**:
-- One or more clarifying questions posted as a comment on the issue,
-  if scope is unclear.
-- Once questions are answered (or if none were needed): a PR adding
-  `specs/<NNN>-<slug>/spec.md` with the spec content.
-- For Epic parents: in addition to the spec PR, sub-issues are
-  created under the parent, each added to the Project.
+```
+/loop 15m /backlog-poll
+```
 
-**Done when**: the spec PR is merged and the issue body contains a
-link to the merged spec file.
+Every tick, `/backlog-poll` does roughly the following:
 
-### Trigger: Status → `Doing`
+1. Checks `.claude/in-flight/` for outstanding lock files. If any, logs
+   what it's waiting on and exits — no new work this tick.
+2. Fetches the Project state via GraphQL.
+3. Recomputes `Total = V + M + A` for any items where it drifted, via
+   GraphQL mutation. (This subsumes the Action-based Total recomputer
+   described under *Project schema*.)
+4. For each item, reconciles current Status against on-disk artefacts
+   (spec PRs, plan/tasks files, implementation PRs) and decides what's
+   outstanding:
+   - `In Design`, no `specs/<id>-*/spec.md` → invoke `/speckit-specify`.
+   - `In Design`, Epic parent with spec but no sub-issues → run
+     `/speckit-plan`, `/speckit-tasks`, `/speckit-taskstoissues`.
+   - `Doing`, no implementation PR → invoke `/speckit-implement`.
+   - Status inconsistent with artefacts → flag in chat.
+5. When a skill blocks on a maintainer answer, the agent writes
+   `.claude/in-flight/<issue-number>.md` with the question and timestamp,
+   asks the question in chat, and exits. The lock file makes the next
+   `/loop` tick a no-op until the question is answered and the work
+   completes — the agent removes the lock then.
 
-**Input**:
-- The issue.
-- The linked spec file at `specs/<NNN>-<slug>/spec.md`.
+**Pros**: no webhook receiver, no GitHub App, no Action minutes;
+clarifying questions land in chat where you actually see them; lock
+files survive cloud-session container churn.
 
-**Expected output**:
-- A branch from the default branch.
-- An implementation PR against the default branch, in **ready for
-  review** state (not draft), referencing the issue with a closing
-  keyword.
+**Cons**: requires a live CC session driving work; status-change to
+dispatch latency is the `/loop` interval (~15 minutes).
 
-**Done when**: the implementation PR is merged. The issue closes
-automatically; the Project's built-in workflow advances the card to
-`Done`.
+### Path B — Webhook → GitHub Action
 
-### Why "open a PR" and not "self-merge"
+For larger teams, untrusted CI, or hands-off automation without a live
+session.
 
-Both triggers stop at *PR open*. Spec content and implementation
-content are reviewed by humans before they land. The agent saves
+A GitHub App (or serverless function) listens for `project_v2_item.edited`
+webhooks. On a status change it fires a `repository_dispatch` event at
+the repo, which triggers a workflow that runs the Claude Code Action
+with the new status and issue number as inputs. The Action invokes
+the same speckit skills, but clarifying questions land as **issue
+comments** rather than chat — no live session to converse with.
+
+**Pros**: hands-off; near-instant dispatch.
+
+**Cons**: hosting a webhook receiver; human-in-the-loop is async
+through issue comments; Action minutes cost.
+
+### Trigger contracts (both paths)
+
+Whichever path, the speckit invocations on each transition are the
+same:
+
+| Transition           | Skills invoked                                                                      |
+|----------------------|-------------------------------------------------------------------------------------|
+| → `In Design`        | `/speckit-specify` (always); `/speckit-clarify` if scope is ambiguous               |
+| → `In Design` (Epic) | …above, then `/speckit-plan`, `/speckit-tasks`, `/speckit-taskstoissues`            |
+| → `Doing`            | `/speckit-implement`                                                                |
+
+Both transitions stop at *PR open*. Spec content and implementation
+content are reviewed by humans before they land — the agent saves
 typing, not judgement. Adopters with stronger CI and higher trust can
-extend either trigger to auto-merge on green; the methodology
+extend either transition to auto-merge on green; the methodology
 recommends against starting there.
 
 ---
 
 ## Reference workflow sketches
 
-The workflows in this section are sketches, not turn-key. They show
-the shape — adopters fill in tokens, Project IDs, and (in the case of
-the trigger workflow) the choice of agent runner.
+The artefacts in this section are sketches, not turn-key. They show
+the shape — adopters fill in tokens, Project IDs, and (for Path B)
+hosting choices.
 
-### Sketch: status → agent dispatch
+### Path A: `/backlog-poll` (this repo)
+
+The orchestration command lives at `.claude/skills/backlog-poll/SKILL.md`
+in this repo. It is the reference implementation for Path A — both
+adopt-by-copy and use-by-reference are valid. See the file for the
+full prompt; the high-level flow is described in
+*Two implementation paths* above.
+
+### Path B: status → agent dispatch
 
 ```yaml
 # .github/workflows/project-status-trigger.yml
-# Dispatches a Claude Code agent when an item's Status changes.
+# Dispatches the Claude Code Action when an item's Status changes.
 
 on:
-  workflow_dispatch:           # invoked by the webhook receiver
-    inputs:
-      issue_number:
-        required: true
-      new_status:
-        required: true         # "In Design" | "Doing"
+  repository_dispatch:
+    types: [project-status-changed]   # fired by the webhook receiver
 
 jobs:
-  in-design:
-    if: ${{ inputs.new_status == 'In Design' }}
+  dispatch:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Run design agent
+      - name: Invoke speckit per new status
         uses: anthropics/claude-code-action@v1  # or equivalent
         with:
-          prompt-file: .github/prompts/in-design.md
-          issue-number: ${{ inputs.issue_number }}
-
-  doing:
-    if: ${{ inputs.new_status == 'Doing' }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Run build agent
-        uses: anthropics/claude-code-action@v1
-        with:
-          prompt-file: .github/prompts/doing.md
-          issue-number: ${{ inputs.issue_number }}
+          # Pass through to a prompt that picks the right speckit skill
+          # based on github.event.client_payload.new_status and invokes it
+          # against github.event.client_payload.issue_number.
+          prompt-file: .github/prompts/project-status-trigger.md
 ```
 
-The webhook receiver (a small GitHub App or serverless function)
-listens for `project_v2_item.edited`, reads the new Status, and
-invokes `workflow_dispatch` on this workflow with the issue number
-and new status as inputs.
+The webhook receiver (a GitHub App or serverless function) listens for
+`project_v2_item.edited`, reads the new Status, and fires
+`repository_dispatch` with `{issue_number, new_status}` in
+`client_payload`. The prompt at
+`.github/prompts/project-status-trigger.md` dispatches to the right
+speckit skill per *Trigger contracts* above.
 
-### Sketch: Total recomputer
+### Sketch: Total recomputer (Path B only)
 
-See the snippet under *Project schema*. The real implementation is
-~30 lines of GraphQL: list items in the Project, read V/M/A, write
-V+M+A to Total if different.
+Path A folds Total recomputation into `/backlog-poll`. Path B needs a
+standalone workflow:
 
-### Sketch: auto-add to Project
+```yaml
+# .github/workflows/recompute-total.yml
+on:
+  schedule: [{ cron: "*/15 * * * *" }]
+  workflow_dispatch:
+jobs:
+  recompute:
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}   # PAT with project:write
+        run: |
+          # GraphQL: list project items, read V/M/A, write V+M+A to Total
+          # if different.
+```
+
+### Sketch: auto-add to Project (both paths)
 
 See the snippet under *Intake*. Uses `actions/add-to-project@v1`
 unchanged.
@@ -400,39 +494,46 @@ output to a committed file — the methodology does not require it.
 
 For a repo adopting this methodology:
 
-1. **Create the Project**. One Project per repo. Visibility: public.
-   Configure the field schema in *Project schema*.
-2. **Set the default Status** to `Triage` in the Project's settings.
-3. **Enable GitHub's built-in `item_closed → Done` Project workflow.**
-4. **Add the issue template** at
+1. **Install spec-kit** (see *Toolchain*). Commit `.claude/skills/` and
+   `.specify/`.
+2. **Create the Project**. One per repo. Visibility: public. Configure
+   the field schema in *Project schema*.
+3. **Set the default Status** to `Triage` in the Project's settings.
+4. **Enable GitHub's built-in `item_closed → Done` Project workflow.**
+5. **Add the issue template** at
    `.github/ISSUE_TEMPLATE/backlog-item.yml` (see *Intake*).
-5. **Add the auto-add workflow** at
+6. **Add the auto-add workflow** at
    `.github/workflows/add-to-project.yml` (see *Intake*).
-6. **Add the Total recomputer** at
-   `.github/workflows/recompute-total.yml` (see *Project schema*).
-7. **Wire the status-trigger dispatcher**. This is the most
-   project-specific step: a webhook receiver that listens for Project
-   item edits and dispatches your agent of choice. The reference
-   sketch above uses Claude Code; adopters can substitute.
+7. **Pick a path** (A or B; see *Two implementation paths*):
+    - Path A: copy or reference `.claude/skills/backlog-poll/SKILL.md`,
+      then run `/loop 15m /backlog-poll` from a Claude Code session.
+    - Path B: add `.github/workflows/recompute-total.yml`, host a
+      webhook receiver, and add the status-trigger workflow.
 8. **Decide your Epic convention**. The methodology assumes Epics are
    parent issues using sub-issues. If your team uses milestones or
    labels for Epics, document the deviation locally.
 9. **Link the Project** from `README.md` and `CONTRIBUTING.md`.
 10. **Retire any prior `BACKLOG.md`**. Migrate items by filing them as
-    issues (one-time effort) and archiving the file.
+    issues (one-time effort) and archiving the file. A reference
+    runbook lives at `docs/migration/from-backlog-md.md` in this repo.
 
 ---
 
 ## Open questions and known limits
 
 - **No first-class trigger for Project item edits.** GitHub Actions
-  does not have a native `on: project_v2_item.edited` trigger.
-  Wiring the status-change dispatch requires either a GitHub App
-  receiving webhooks or polling. This is the heaviest piece of
-  infrastructure the methodology requires.
-- **Total field drift.** Until a webhook-based recomputer is wired,
-  the schedule-based fallback means Total can be a few minutes stale.
-  Acceptable for triage; not acceptable for hard sorting.
+  does not have a native `on: project_v2_item.edited` trigger. Path A
+  works around this with a polling Claude Code session; Path B works
+  around it with a webhook receiver. Neither is free.
+- **Path A requires a live session.** If no CC session is running
+  `/loop 15m /backlog-poll`, cards sit on the board untouched. For
+  cloud CC, a long-running session is the natural home; for local CC,
+  the maintainer has to remember to start it. Lock files in
+  `.claude/in-flight/` survive container churn so a freshly resumed
+  session picks up where the last left off.
+- **Total field drift.** Path A recomputes every tick; Path B's
+  scheduled recomputer means Total can be a few minutes stale.
+  Acceptable for triage; not for hard sorting.
 - **Reproducibility.** Unlike a `BACKLOG.md` in git, the Project state
   at the time of a given commit cannot be reconstructed from the repo
   alone. If you need that, render a snapshot to a committed file on a
@@ -440,3 +541,7 @@ For a repo adopting this methodology:
 - **Permissions.** Project visibility is repo-independent. A public
   Project on a private repo can leak issue titles; check before making
   the Project public.
+- **Speckit version drift.** Pin spec-kit to a release tag in the
+  install command and re-run the init periodically to pull updates.
+  Skills are markdown; diffing the update against your committed
+  copies is straightforward.
