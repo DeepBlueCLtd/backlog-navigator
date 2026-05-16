@@ -171,11 +171,11 @@ flowchart LR
     <tbody>
       <tr>
         <td>→ <strong>In Design</strong></td>
-        <td><code>/speckit-specify</code> (always); <code>/speckit-clarify</code> if scope is ambiguous</td>
+        <td><code>/speckit-specify</code> → <code>/speckit-clarify</code> (if ambiguous) → <code>/speckit-plan</code> → <code>/speckit-tasks</code></td>
       </tr>
       <tr>
-        <td>→ <strong>In Design</strong> (Epic)</td>
-        <td>…above, then <code>/speckit-plan</code> → <code>/speckit-tasks</code> → <code>/speckit-taskstoissues</code></td>
+        <td>→ <strong>In Design</strong> (Epic only)</td>
+        <td>…then <code>/speckit-taskstoissues</code> to file each task as a sub-issue</td>
       </tr>
       <tr>
         <td>→ <strong>Doing</strong></td>
@@ -222,8 +222,8 @@ flowchart TB
     A["Anyone files an issue (minimal template)"] --> B["Auto-added to Project as Triage"]
     B --> C["Maintainer scores: Category, Complexity, V/M/A"]
     C --> D["Drag → In Design"]
-    D --> E["/backlog-poll runs /speckit-specify"]
-    E --> F["Spec PR opens"]
+    D --> E["/backlog-poll runs the design phases<br/>(specify → clarify? → plan → tasks)"]
+    E --> F["Design PR opens"]
     F --> G["Maintainer reviews + merges"]
     G --> H["Drag → Ready"]
     H --> I["Drag → Doing (when capacity)"]
@@ -231,7 +231,7 @@ flowchart TB
     J --> K["Implementation PR opens"]
     K --> L["Merge → issue closes → status auto-→ Done"]
 </pre>
-  <p class="footnote">Epics get the extra <code>plan → tasks → taskstoissues</code> step between E and F, producing child sub-issues that flow through the same lifecycle.</p>
+  <p class="footnote">All items go through <code>specify → clarify? → plan → tasks</code> in step E. Epics get one additional step — <code>taskstoissues</code> — that files each task as a sub-issue. Those sub-issues then flow through this same lifecycle.</p>
 </section>
 
 <!-- ============================================================== -->

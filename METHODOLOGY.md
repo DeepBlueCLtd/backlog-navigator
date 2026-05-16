@@ -59,14 +59,14 @@ Items carry a small set of custom Project fields: **Category**,
 **Complexity**, **V / M / A** scores and a derived **Total**, plus the
 standard **Status**.
 
-**Epics** are parent issues. When a maintainer drags an Epic to
-**In Design**, an agent runs the speckit phases on the parent issue —
-`/speckit-specify`, optionally `/speckit-clarify`, then `/speckit-plan`
-and `/speckit-tasks` — and finally invokes `/speckit-taskstoissues`,
-which files each generated task as a child sub-issue. Non-Epic items
-get the same specify-and-clarify treatment without the
-tasks-to-issues step. Moving a card to **Doing** invokes
-`/speckit-implement`, which opens an implementation PR for human review.
+When a maintainer drags an item to **In Design**, the orchestrator
+runs the speckit design phases against it — `/speckit-specify`,
+optionally `/speckit-clarify`, then `/speckit-plan` and
+`/speckit-tasks`. **Epics** are parent issues; they get the same
+treatment plus a final `/speckit-taskstoissues` step that files each
+generated task as a child sub-issue under the Epic. Moving a card to
+**Doing** invokes `/speckit-implement`, which opens an implementation
+PR for human review.
 
 The Project itself is publicly viewable — there is no separate
 `BACKLOG.md` to maintain.
@@ -158,25 +158,32 @@ already enough to implement against — rare).
 
 ### In Design
 
-The item is being specified. Spec artefacts are being produced.
+The item is being specified, planned, and broken into tasks.
 
-**On entry**: the orchestrator (`/backlog-poll`, see *Two implementation
-paths* below) invokes `/speckit-specify` against the issue, asking
-clarifying questions in chat where needed. For Epic parent issues it
-then runs `/speckit-plan`, `/speckit-tasks`, and `/speckit-taskstoissues`
-to decompose into child sub-issues. The output is a PR adding
-`specs/<NNN>-<slug>/spec.md` (and, for Epics, sub-issues filed on the
-parent).
+**On entry**: the orchestrator (`/backlog-poll`, see *Orchestration*
+below) advances one phase per tick, asking clarifying questions in
+chat where needed:
 
-Maintainers may also drive intermediate speckit phases by hand
-(`/speckit-clarify`, `/speckit-plan`, `/speckit-tasks`,
-`/speckit-analyze`, `/speckit-checklist`) while the card sits in this
-state. The Project status doesn't try to mirror those finer-grained
-phases — the on-disk artefacts do.
+1. `/speckit-specify` produces `specs/<NNN>-<slug>/spec.md`.
+2. `/speckit-clarify` (optional) is run if the spec has unresolved
+   `[NEEDS CLARIFICATION]` markers.
+3. `/speckit-plan` produces `plan.md`.
+4. `/speckit-tasks` produces `tasks.md`.
+5. For **Epic** parent issues only, `/speckit-taskstoissues` then
+   files each task as a child sub-issue under the Epic.
 
-**Exit criteria**: the spec PR is merged. The issue body is updated
-(by the agent or maintainer) with a link to the merged spec file.
-Maintainer drags the card to **Ready**.
+The output is a design PR containing the generated artefacts, plus
+(for Epics) the new sub-issues filed under the parent.
+
+Maintainers may also drive any of these phases by hand at any point
+(`/speckit-clarify`, `/speckit-analyze`, `/speckit-checklist`, and
+re-runs of the above) while the card sits in this state. The Project
+status doesn't try to mirror these finer-grained phases — the on-disk
+artefacts do.
+
+**Exit criteria**: the design PR is merged (and for Epics, sub-issues
+exist). The issue body is updated (by the agent or maintainer) with a
+link to the merged spec. Maintainer drags the card to **Ready**.
 
 ### Ready
 
@@ -272,15 +279,14 @@ first-class GitHub object — not labels, not a custom field.
 item, but title it `[epic] <theme>` and (optionally) label it `epic`.
 The intake workflow puts it in Triage like any other issue.
 
-**Decomposition**: when a maintainer drags an Epic to **In Design**,
-the orchestration agent runs `/speckit-specify` (and optionally
-`/speckit-clarify`) on the parent to lock down scope, then
-`/speckit-plan` and `/speckit-tasks` to produce a planned task list.
-Finally `/speckit-taskstoissues` files each task as a child sub-issue
-of the Epic. Each sub-issue is added to the Project in Triage, where it
-gets its own scoping (Category, scores, Complexity) before being
-dragged onward. Sub-issue linkage to the Epic is native — no labels or
-custom fields required.
+**Decomposition**: Epics go through the same In-Design phases as
+every other item (`specify` → optional `clarify` → `plan` → `tasks`).
+What's specific to an Epic is the final step: once `tasks.md` exists,
+the orchestrator runs `/speckit-taskstoissues`, which files each task
+as a child sub-issue under the Epic. Each sub-issue is added to the
+Project in Triage, where it gets its own scoping (Category, scores,
+Complexity) before being dragged onward. Sub-issue linkage to the
+Epic is native — no labels or custom fields required.
 
 **Status independence**: once child sub-issues exist, each progresses
 through the state machine on its own. The Epic parent stays in
@@ -314,11 +320,13 @@ Every tick, `/backlog-poll` does roughly the following:
 3. Recomputes `Total = V + M + A` for any items where it drifted, via
    GraphQL mutation.
 4. For each item, reconciles current Status against on-disk artefacts
-   (spec PRs, plan/tasks files, implementation PRs) and decides what's
-   outstanding:
-   - `In Design`, no `specs/<id>-*/spec.md` → invoke `/speckit-specify`.
-   - `In Design`, Epic parent with spec but no sub-issues → run
-     `/speckit-plan`, `/speckit-tasks`, `/speckit-taskstoissues`.
+   (spec, plan, tasks files; sub-issues; implementation PRs) and
+   advances **one phase per tick**:
+   - `In Design`, no `spec.md` → invoke `/speckit-specify`.
+   - `In Design`, spec exists, no `plan.md` → invoke `/speckit-plan`.
+   - `In Design`, plan exists, no `tasks.md` → invoke `/speckit-tasks`.
+   - `In Design`, tasks exist, Epic parent, no sub-issues → invoke
+     `/speckit-taskstoissues`.
    - `Doing`, no implementation PR → invoke `/speckit-implement`.
    - Status inconsistent with artefacts → flag in chat.
 5. When a skill blocks on a maintainer answer, the agent writes
@@ -329,11 +337,11 @@ Every tick, `/backlog-poll` does roughly the following:
 
 The speckit invocations on each transition are:
 
-| Transition           | Skills invoked                                                                      |
-|----------------------|-------------------------------------------------------------------------------------|
-| → `In Design`        | `/speckit-specify` (always); `/speckit-clarify` if scope is ambiguous               |
-| → `In Design` (Epic) | …above, then `/speckit-plan`, `/speckit-tasks`, `/speckit-taskstoissues`            |
-| → `Doing`            | `/speckit-implement`                                                                |
+| Transition                | Skills invoked                                                                                  |
+|---------------------------|-------------------------------------------------------------------------------------------------|
+| → `In Design`             | `/speckit-specify` → `/speckit-clarify` (if ambiguous) → `/speckit-plan` → `/speckit-tasks`     |
+| → `In Design` (Epic only) | …then `/speckit-taskstoissues` to file each task as a sub-issue                                 |
+| → `Doing`                 | `/speckit-implement`                                                                            |
 
 Both transitions stop at *PR open*. Spec and implementation content
 are reviewed by humans before they land — the agent saves typing, not

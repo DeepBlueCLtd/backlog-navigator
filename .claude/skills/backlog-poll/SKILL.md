@@ -116,16 +116,19 @@ Walk items in priority order (highest `Total` first; ties broken by
 oldest issue number) and pick the first that matches an actionable
 row:
 
-| Status      | Artefact state                                       | Action                                                                       |
-|-------------|------------------------------------------------------|------------------------------------------------------------------------------|
-| `Triage`    | (any)                                                | **None** — maintainer's job to score and advance.                            |
-| `In Design` | No `specs/<n>-*/spec.md` exists                      | Invoke `/speckit-specify`. See *Speckit invocation*.                         |
-| `In Design` | Spec exists; Epic parent; no sub-issues filed yet    | Invoke `/speckit-plan` → `/speckit-tasks` → `/speckit-taskstoissues`.        |
-| `In Design` | Spec PR merged; plan/tasks done (or n/a, non-Epic)   | **None** — flag in chat that the maintainer can drag to `Ready`.             |
-| `Ready`     | (any)                                                | **None** — maintainer's job to drag to `Doing` when capacity is available.   |
-| `Doing`     | No implementation PR open or merged                  | Invoke `/speckit-implement`.                                                 |
-| `Doing`     | Implementation PR open                               | **None** — but flag in chat if CI is red.                                    |
-| `Done`      | (any)                                                | **None**.                                                                    |
+| Status      | Artefact state                                                       | Action                                                                       |
+|-------------|----------------------------------------------------------------------|------------------------------------------------------------------------------|
+| `Triage`    | (any)                                                                | **None** — maintainer's job to score and advance.                            |
+| `In Design` | No `specs/<n>-*/spec.md` exists                                      | Invoke `/speckit-specify`. See *Speckit invocation*.                         |
+| `In Design` | Spec has unresolved `[NEEDS CLARIFICATION]` markers                  | Invoke `/speckit-clarify` (or surface the markers in chat).                  |
+| `In Design` | Spec exists, no `plan.md`                                            | Invoke `/speckit-plan`.                                                      |
+| `In Design` | Plan exists, no `tasks.md`                                           | Invoke `/speckit-tasks`.                                                     |
+| `In Design` | Tasks exist; **Epic parent**; no sub-issues filed                    | Invoke `/speckit-taskstoissues`.                                             |
+| `In Design` | All design artefacts present (Epic: + sub-issues); design PR merged  | **None** — flag in chat that the maintainer can drag to `Ready`.             |
+| `Ready`     | (any)                                                                | **None** — maintainer's job to drag to `Doing` when capacity is available.   |
+| `Doing`     | No implementation PR open or merged                                  | Invoke `/speckit-implement`.                                                 |
+| `Doing`     | Implementation PR open                                               | **None** — but flag in chat if CI is red.                                    |
+| `Done`      | (any)                                                                | **None**.                                                                    |
 
 Inconsistencies — flag in chat without taking action:
 
@@ -162,7 +165,7 @@ Frontmatter:
 ```yaml
 ---
 issue: <issue-number>
-phase: specify | plan-tasks-issues | implement
+phase: specify | clarify | plan | tasks | taskstoissues | implement
 started: <ISO 8601 timestamp>
 branch: <feature-branch-name-or-null>
 ---
@@ -201,18 +204,19 @@ restarts can resume.
    - Delete the lock file (in a final commit). Push.
 6. Report what was done in chat.
 
-### Epic decomposition (composite phase)
+### Epic-specific step: taskstoissues
 
-For Epic parents in `In Design` with a merged spec, the orchestrator
-runs `/speckit-plan` → `/speckit-tasks` → `/speckit-taskstoissues`
-as a single composite phase with one lock file
-(`phase: plan-tasks-issues`). Sub-issues created by
-`/speckit-taskstoissues` should be added to the Project (in
-`Triage`) and linked to the Epic via the native sub-issue
-relationship.
+Every item in `In Design` goes through `specify` → optional `clarify`
+→ `plan` → `tasks`. **Epic parents** get one additional phase:
+`/speckit-taskstoissues`, which fires once `tasks.md` exists on the
+feature branch and no child sub-issues have been filed yet.
 
-If any one of the three sub-phases blocks on a question, treat it
-the same as any other block: update the lock, ask in chat, exit.
+Sub-issues created by `/speckit-taskstoissues` are added to the
+Project in `Triage`, where each gets its own scoping. Linkage to the
+Epic is via GitHub's native sub-issue relationship.
+
+A non-Epic item finishes its In-Design work when `tasks.md` is
+written and the design PR opens — there is no `taskstoissues` step.
 
 ## Summarise
 
