@@ -87,28 +87,28 @@
   <h2>Strategy in one picture</h2>
 <pre class="mermaid">
 flowchart TB
-    subgraph driver["The driver"]
+    subgraph driver [The driver]
         LP["/loop 15m"]
     end
-    subgraph orch["Orchestration (this repo)"]
+    subgraph orch [Orchestration - this repo]
         BP["/backlog-poll"]
     end
-    subgraph phases["Per-phase work (spec-kit)"]
+    subgraph phases [Per-phase work - spec-kit]
         SP["/speckit-specify"]
         PL["/speckit-plan"]
         TK["/speckit-tasks"]
         TI["/speckit-taskstoissues"]
         IM["/speckit-implement"]
     end
-    subgraph gh["GitHub primitives"]
-        PJ["Project board"]
-        IS["Issues + sub-issues"]
-        PRR["PRs"]
+    subgraph gh [GitHub primitives]
+        PJ[Project board]
+        IS[Issues + sub-issues]
+        PRR[PRs]
     end
 
     LP --> BP
-    BP -.reads state.-> PJ
-    BP -.writes Total.-> PJ
+    BP -->|reads state| PJ
+    BP -->|writes Total| PJ
     BP --> SP
     BP --> PL
     BP --> TK
