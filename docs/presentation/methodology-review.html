@@ -107,8 +107,8 @@ flowchart TB
     end
 
     LP --> BP
-    BP -->|reads state| PJ
-    BP -->|writes Total| PJ
+    BP -->|reads Status + Phase| PJ
+    BP -->|writes Phase + Total| PJ
     BP --> SP
     BP --> PL
     BP --> TK
@@ -150,16 +150,15 @@ flowchart LR
   <table>
     <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
     <tbody>
-      <tr><td>Status</td><td>single-select</td><td>The five-state machine</td></tr>
+      <tr><td>Status</td><td>single-select</td><td>Maintainer-dragged: Triage / In Design / Ready / Doing / Done</td></tr>
+      <tr><td><strong>Phase</strong></td><td>single-select</td><td><strong>Orchestrator-maintained</strong>: Spec drafting → Plan drafting → Tasks drafting → (Decomposing) → Designed → Implementing</td></tr>
       <tr><td>Category</td><td>single-select</td><td>Feature, Enhancement, Tech Debt, Bug, Documentation, Spike</td></tr>
       <tr><td>Complexity</td><td>single-select</td><td>Low / Medium / High</td></tr>
-      <tr><td>V</td><td>number</td><td>Value score (0–5)</td></tr>
-      <tr><td>M</td><td>number</td><td>Mission score (0–5)</td></tr>
-      <tr><td>A</td><td>number</td><td>Affordability / ease (0–5)</td></tr>
-      <tr><td>Total</td><td>number</td><td><strong>V + M + A</strong>, recomputed every tick by <code>/backlog-poll</code></td></tr>
+      <tr><td>V, M, A</td><td>numbers</td><td>3-dimensional priority score (0–5 each)</td></tr>
+      <tr><td>Total</td><td>number</td><td><strong>V + M + A</strong>, recomputed every tick</td></tr>
     </tbody>
   </table>
-  <p class="footnote">Public Project, one per repo. Anyone can read it; only maintainers move cards.</p>
+  <p class="footnote">Public Project, one per repo. <strong>Status</strong> is the human kanban; <strong>Phase</strong> is the orchestrator's API-state source of truth — it stops re-triggers when a phase's work is sitting in an open PR.</p>
 </section>
 
 <!-- ============================================================== -->
@@ -277,9 +276,10 @@ sequenceDiagram
   <h2>What's still ahead</h2>
   <p>These steps are yours — they need GitHub credentials &amp; UI access:</p>
   <ol>
-    <li><span class="pending">●</span> <strong>Create the GitHub Project</strong> for this repo (runbook step 1–4).</li>
-    <li><span class="pending">●</span> <strong>Migrate the 9 dummy items</strong> from <code>BACKLOG.md</code> (runbook step 7).</li>
-    <li><span class="pending">●</span> Write <code>.claude/backlog-poll.config.json</code> with the new Project number.</li>
+    <li><span class="done">✓</span> <strong>GitHub Project created</strong> at <code>orgs/DeepBlueCLtd/projects/4</code>.</li>
+    <li><span class="done">✓</span> <code>.claude/backlog-poll.config.json</code> pointing at Project #4.</li>
+    <li><span class="pending">●</span> <strong>Add the <code>Phase</code> field</strong> to Project #4 (runbook step 2b — new since project creation).</li>
+    <li><span class="pending">●</span> <strong>Migrate the 9 dummy items</strong> from <code>BACKLOG.md</code> with Status + initial Phase (runbook step 7).</li>
     <li><span class="pending">●</span> Archive <code>BACKLOG.md</code> (runbook step 9).</li>
     <li><span class="pending">●</span> Open a Claude Code session &amp; run <code>/loop 15m /backlog-poll</code>.</li>
     <li><span class="pending">●</span> <strong>Drag a card</strong> — see if the orchestrator picks it up.</li>

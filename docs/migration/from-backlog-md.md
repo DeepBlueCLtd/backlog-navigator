@@ -108,6 +108,10 @@ mutation($projectId: ID!, $fieldId: ID!) {
 ```sh
 # Single-selects
 gh project field-create "$PROJECT_NUMBER" --owner "$OWNER" \
+    --name "Phase" --data-type SINGLE_SELECT \
+    --single-select-options "Spec drafting,Plan drafting,Tasks drafting,Decomposing,Designed,Implementing"
+
+gh project field-create "$PROJECT_NUMBER" --owner "$OWNER" \
     --name "Category" --data-type SINGLE_SELECT \
     --single-select-options "Feature,Enhancement,Tech Debt,Bug,Documentation,Spike"
 
@@ -278,24 +282,31 @@ ITEM_ID=$(gh project item-add "$PROJECT_NUMBER" --owner "$OWNER" \
 # (Use the same gh project item-edit pattern as in 7b for each field.)
 ```
 
-### 7d. Status mapping
+### 7d. Status and Phase mapping
 
-Use this mapping when filling in `NEW_STATUS` for each row:
+Use this mapping when filling in `NEW_STATUS` and `NEW_PHASE` for each
+row. Phase tells the orchestrator how much speckit work has already
+been done — items partway through their lifecycle skip phases the
+orchestrator would otherwise re-run.
 
-| `BACKLOG.md` status | New Project status      |
-|---------------------|-------------------------|
-| `needs-interview`   | `Triage`                |
-| `proposed`          | `In Design`             |
-| `approved`          | `In Design`             |
-| `specified`         | `In Design`             |
-| `clarified`         | `In Design`             |
-| `planned`           | `Ready`                 |
-| `tasked`            | `Ready`                 |
-| `implementing`      | `Doing`                 |
-| `blocked`           | `Doing` (flag in chat)  |
-| `complete`          | close the issue; auto-→ `Done` |
-| `parked`            | close the issue; do not add to Project |
-| `rejected`          | close the issue; do not add to Project |
+| `BACKLOG.md` status | New `Status`            | Initial `Phase`        |
+|---------------------|-------------------------|------------------------|
+| `needs-interview`   | `Triage`                | *(empty)*              |
+| `proposed`          | `In Design`             | *(empty)*              |
+| `approved`          | `In Design`             | *(empty)*              |
+| `specified`         | `In Design`             | `Spec drafting`        |
+| `clarified`         | `In Design`             | `Spec drafting`        |
+| `planned`           | `Ready`                 | `Designed`             |
+| `tasked`            | `Ready`                 | `Designed`             |
+| `implementing`      | `Doing`                 | `Implementing`         |
+| `blocked`           | `Doing` (flag in chat)  | `Implementing`         |
+| `complete`          | close the issue; auto-→ `Done` | (n/a)           |
+| `parked`            | close the issue; do not add to Project | (n/a)    |
+| `rejected`          | close the issue; do not add to Project | (n/a)    |
+
+If a migrated item already has artefacts on disk (e.g. a `specified`
+item with an existing `specs/<id>-*/spec.md`), confirm the Phase is
+set so the orchestrator doesn't re-run `/speckit-specify`.
 
 For items mapped to `complete`/`parked`/`rejected`, close the issue
 with the appropriate state reason after filing:

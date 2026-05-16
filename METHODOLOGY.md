@@ -113,15 +113,16 @@ status change.
 Create a Project (org-level or user-level, your choice) and link it to
 the repo. Configure it with these fields:
 
-| Field        | Type                | Values / notes                                                              |
-|--------------|---------------------|------------------------------------------------------------------------------|
-| Status       | Single-select       | `Triage`, `In Design`, `Ready`, `Doing`, `Done`                              |
-| Category     | Single-select       | e.g. `Feature`, `Enhancement`, `Tech Debt`, `Bug`, `Documentation`, `Spike`  |
-| Complexity   | Single-select       | `Low`, `Medium`, `High`                                                      |
-| V            | Number              | Value score (0–5)                                                            |
-| M            | Number              | Mission score (0–5)                                                          |
-| A            | Number              | Affordability / ease score (0–5)                                             |
-| Total        | Number              | `V + M + A`, recomputed by an Action — see below                             |
+| Field        | Type                | Values / notes                                                                                                  |
+|--------------|---------------------|------------------------------------------------------------------------------------------------------------------|
+| Status       | Single-select       | `Triage`, `In Design`, `Ready`, `Doing`, `Done`. Dragged by maintainers.                                         |
+| Phase        | Single-select       | *(empty)*, `Spec drafting`, `Plan drafting`, `Tasks drafting`, `Decomposing`, `Designed`, `Implementing`. Maintained by the orchestrator (see *Phase field*). |
+| Category     | Single-select       | e.g. `Feature`, `Enhancement`, `Tech Debt`, `Bug`, `Documentation`, `Spike`                                      |
+| Complexity   | Single-select       | `Low`, `Medium`, `High`                                                                                          |
+| V            | Number              | Value score (0–5)                                                                                                |
+| M            | Number              | Mission score (0–5)                                                                                              |
+| A            | Number              | Affordability / ease score (0–5)                                                                                 |
+| Total        | Number              | `V + M + A`, recomputed by `/backlog-poll`                                                                       |
 
 Make the Project's visibility **public** so anyone can read the
 backlog without a GitHub account.
@@ -133,10 +134,44 @@ rather than collapsing rationale into a single P0/P1/P2. Total is the
 sortable summary. Adopters who don't want this can keep a single
 `Priority` field instead — the rest of the methodology is unchanged.
 
+### The `Phase` field
+
+`Phase` is the orchestrator's source of truth for "where in the
+speckit pipeline is this item." It is **API-state, not git-state** —
+so the orchestrator never has to guess at whether a feature branch's
+artefacts are merged, on a PR, or partially written. It just reads
+Phase.
+
+Lifecycle of a typical issue:
+
+```
+(empty)
+  └─ orchestrator runs /speckit-specify
+     → Phase = Spec drafting
+        └─ orchestrator runs /speckit-plan
+           → Phase = Plan drafting
+              └─ orchestrator runs /speckit-tasks
+                 → Phase = Tasks drafting
+                    ├─ non-Epic: → Phase = Designed
+                    └─ Epic: orchestrator runs /speckit-taskstoissues
+                       → Phase = Decomposing
+                          → Phase = Designed
+                             [ maintainer drags Status to Ready, then Doing ]
+                                └─ orchestrator runs /speckit-implement
+                                   → Phase = Implementing
+                                      [ impl PR merges; Status auto-→ Done ]
+```
+
+`Phase` is written by the orchestrator via GraphQL whenever it
+advances a phase. Maintainers don't edit it. If a maintainer drags
+`Status` somewhere inconsistent with `Phase` (e.g. `Ready` while
+`Phase=Plan drafting`), the orchestrator flags it in chat without
+acting.
+
 ### Maintaining Total
 
 Projects v2 has no computed fields, so `Total = V + M + A` is written
-back by `/backlog-poll` on every tick — see *Orchestration* below. No
+back by `/backlog-poll` on every tick alongside the Phase updates. No
 separate workflow is required.
 
 ---
@@ -158,32 +193,35 @@ already enough to implement against — rare).
 
 ### In Design
 
-The item is being specified, planned, and broken into tasks.
+The item is being specified, planned, and broken into tasks. The
+orchestrator advances **one phase per tick**, updating the `Phase`
+field as it goes:
 
-**On entry**: the orchestrator (`/backlog-poll`, see *Orchestration*
-below) advances one phase per tick, asking clarifying questions in
-chat where needed:
+1. Phase *(empty)* → `/speckit-specify` produces
+   `specs/<NNN>-<slug>/spec.md` on the design branch; design PR opens;
+   Phase = `Spec drafting`.
+2. Phase `Spec drafting` with `[NEEDS CLARIFICATION]` markers →
+   `/speckit-clarify` runs. Stays in `Spec drafting` until clean.
+3. Phase `Spec drafting` (clean) → `/speckit-plan` produces `plan.md`;
+   Phase = `Plan drafting`.
+4. Phase `Plan drafting` → `/speckit-tasks` produces `tasks.md`;
+   Phase = `Tasks drafting`.
+5. Phase `Tasks drafting`:
+   - **Non-Epic** → Phase = `Designed`.
+   - **Epic** → `/speckit-taskstoissues` files each task as a
+     sub-issue under the parent; Phase = `Decomposing`, then
+     `Designed` once sub-issues exist.
 
-1. `/speckit-specify` produces `specs/<NNN>-<slug>/spec.md`.
-2. `/speckit-clarify` (optional) is run if the spec has unresolved
-   `[NEEDS CLARIFICATION]` markers.
-3. `/speckit-plan` produces `plan.md`.
-4. `/speckit-tasks` produces `tasks.md`.
-5. For **Epic** parent issues only, `/speckit-taskstoissues` then
-   files each task as a child sub-issue under the Epic.
-
-The output is a design PR containing the generated artefacts, plus
-(for Epics) the new sub-issues filed under the parent.
+When Phase reaches `Designed`, the orchestrator stops and flags in
+chat: "design done, drag to Ready when the design PR has merged."
 
 Maintainers may also drive any of these phases by hand at any point
-(`/speckit-clarify`, `/speckit-analyze`, `/speckit-checklist`, and
-re-runs of the above) while the card sits in this state. The Project
-status doesn't try to mirror these finer-grained phases — the on-disk
-artefacts do.
+(`/speckit-clarify`, `/speckit-analyze`, `/speckit-checklist`, or
+re-runs of any phase). The orchestrator picks back up from whatever
+state the `Phase` field is in.
 
-**Exit criteria**: the design PR is merged (and for Epics, sub-issues
-exist). The issue body is updated (by the agent or maintainer) with a
-link to the merged spec. Maintainer drags the card to **Ready**.
+**Exit criteria**: design PR merged; for Epics, sub-issues exist;
+Phase = `Designed`. Maintainer drags the card to **Ready**.
 
 ### Ready
 
@@ -198,14 +236,16 @@ drags to **Doing**.
 
 Implementation is in flight.
 
-**On entry**: the orchestrator invokes `/speckit-implement` against
-the issue. The skill reads the spec, plan, and tasks; implements the
-change; runs project checks; and opens a PR referencing the issue with
-a closing keyword (`Closes #NNN`). The PR is opened in ready-for-review
-state — not draft — so human review is the next step.
+**On entry** (Status = `Doing`, Phase = `Designed`): the orchestrator
+creates the implementation branch (see *Branch strategy*) and invokes
+`/speckit-implement`. The skill reads the spec, plan, and tasks;
+implements the change; runs project checks; opens an implementation
+PR referencing the issue with a closing keyword (`Closes #NNN`).
+Phase = `Implementing`. The PR is opened ready for review (not
+draft) so human review is the next step.
 
 **Exit criteria**: the implementation PR is merged. The issue closes
-automatically, and the Project's built-in workflow moves the card to
+automatically; the Project's built-in workflow moves the card to
 **Done**.
 
 ### Done
@@ -298,6 +338,51 @@ closed (GitHub enforces this automatically for sub-issues).
 
 ---
 
+## Branch strategy
+
+Each issue produces **one feature, two PRs**:
+
+1. **Design branch** — named `<NNN>-<slug>` to match the speckit
+   feature directory. Created when the orchestrator runs
+   `/speckit-specify` for the first time. Each subsequent design
+   phase (`clarify`, `plan`, `tasks`, and `taskstoissues` for
+   Epics) commits to this same branch. A single **design PR** opens
+   after the first commit and stays open as the orchestrator pushes
+   successive commits, giving reviewers a running view of the design.
+   Merges to `main` when Phase reaches `Designed` and the maintainer
+   reviews it.
+
+2. **Implementation branch** — named `<NNN>-<slug>-impl`. Created
+   when Status moves to `Doing` and the orchestrator runs
+   `/speckit-implement`. The **implementation PR** opens against
+   `main`, references the issue with `Closes #NNN`, and merges when
+   the maintainer signs off.
+
+Two PRs per issue, two clean review surfaces. The design PR is
+review-of-intent; the implementation PR is review-of-code. They
+don't have to be merged in lockstep — the design PR usually merges
+first (so the spec is on `main` before implementation references
+it), but you can keep both open for late design tweaks during
+implementation if needed.
+
+### Worktrees (optional, local CC only)
+
+In a cloud Claude Code session the container is the orchestrator's
+domain and plain branch switching is fine. If you run
+`/backlog-poll` in a local CC session while also coding in the same
+checkout, the orchestrator's branch flips will collide with your
+own work. The fix is a dedicated git worktree:
+
+```sh
+git worktree add ../backlog-poll-workspace main
+```
+
+…and set `workspace_dir` in `.claude/backlog-poll.config.json` to
+`../backlog-poll-workspace`. The orchestrator does all its branch
+work there; your primary checkout stays on whatever you were doing.
+
+---
+
 ## Orchestration
 
 Status changes need to dispatch speckit skills somehow, and GitHub
@@ -316,38 +401,44 @@ Every tick, `/backlog-poll` does roughly the following:
 
 1. Checks `.claude/in-flight/` for outstanding lock files. If any, logs
    what it's waiting on and exits — no new work this tick.
-2. Fetches the Project state via GraphQL.
+2. Fetches the Project state via GraphQL (per-item: `Status`, `Phase`,
+   `V`, `M`, `A`, `Total`, sub-issue relationships).
 3. Recomputes `Total = V + M + A` for any items where it drifted, via
    GraphQL mutation.
-4. For each item, reconciles current Status against on-disk artefacts
-   (spec, plan, tasks files; sub-issues; implementation PRs) and
-   advances **one phase per tick**:
-   - `In Design`, no `spec.md` → invoke `/speckit-specify`.
-   - `In Design`, spec exists, no `plan.md` → invoke `/speckit-plan`.
-   - `In Design`, plan exists, no `tasks.md` → invoke `/speckit-tasks`.
-   - `In Design`, tasks exist, Epic parent, no sub-issues → invoke
-     `/speckit-taskstoissues`.
-   - `Doing`, no implementation PR → invoke `/speckit-implement`.
-   - Status inconsistent with artefacts → flag in chat.
+4. For each item, decides what to do from the `(Status, Phase)` pair
+   and advances **one phase per tick**. The decision table is keyed
+   off the API state — never off the working tree or merged-to-`main`
+   artefacts — so long-running phases whose work-in-progress lives
+   only on a feature branch never get re-triggered:
+
+| Status     | Phase                | Action                                                                                |
+|------------|----------------------|---------------------------------------------------------------------------------------|
+| Triage     | (any)                | None — maintainer scores and advances.                                                |
+| In Design  | *(empty)*            | Create design branch; run `/speckit-specify`; open design PR; set Phase = `Spec drafting`. |
+| In Design  | `Spec drafting`      | If `[NEEDS CLARIFICATION]` markers exist, run `/speckit-clarify`. Otherwise run `/speckit-plan`; commit; set Phase = `Plan drafting`. |
+| In Design  | `Plan drafting`      | Run `/speckit-tasks`; commit; set Phase = `Tasks drafting`.                            |
+| In Design  | `Tasks drafting`     | Non-Epic: set Phase = `Designed`. Epic: run `/speckit-taskstoissues`; set Phase = `Decomposing`. |
+| In Design  | `Decomposing`        | Verify sub-issues filed; set Phase = `Designed`.                                       |
+| In Design  | `Designed`           | None — flag in chat: "design done, drag to Ready when design PR has merged."          |
+| Ready      | (any)                | None — maintainer drags to Doing when capacity is available.                          |
+| Doing      | `Designed`           | Create impl branch; run `/speckit-implement`; open impl PR; set Phase = `Implementing`. |
+| Doing      | `Implementing`       | None — wait for impl PR to merge.                                                     |
+| Done       | (any)                | None.                                                                                  |
+| (any)      | (mismatched)         | Flag inconsistency in chat without acting (e.g. Status = `Ready` while Phase = `Plan drafting`). |
+
 5. When a skill blocks on a maintainer answer, the agent writes
-   `.claude/in-flight/<issue-number>.md` with the question and timestamp,
-   asks the question in chat, and exits. The lock file makes the next
-   `/loop` tick a no-op until the question is answered and the work
-   completes — the agent removes the lock then.
+   `.claude/in-flight/<issue-number>.md` with the question and
+   timestamp, asks the question in chat, and exits. The lock file
+   makes the next `/loop` tick a no-op until the question is answered
+   and the work completes — the agent removes the lock then. Locks
+   handle the "currently asking" case; `Phase` handles the "PR open,
+   awaiting merge" case.
 
-The speckit invocations on each transition are:
-
-| Transition                | Skills invoked                                                                                  |
-|---------------------------|-------------------------------------------------------------------------------------------------|
-| → `In Design`             | `/speckit-specify` → `/speckit-clarify` (if ambiguous) → `/speckit-plan` → `/speckit-tasks`     |
-| → `In Design` (Epic only) | …then `/speckit-taskstoissues` to file each task as a sub-issue                                 |
-| → `Doing`                 | `/speckit-implement`                                                                            |
-
-Both transitions stop at *PR open*. Spec and implementation content
-are reviewed by humans before they land — the agent saves typing, not
-judgement. Adopters with stronger CI and higher trust can extend either
-transition to auto-merge on green; the methodology recommends against
-starting there.
+Both PR-opening transitions stop at *PR open*. Spec and implementation
+content are reviewed by humans before they land — the agent saves
+typing, not judgement. Adopters with stronger CI and higher trust can
+extend either transition to auto-merge on green; the methodology
+recommends against starting there.
 
 ### A note on the webhook alternative
 

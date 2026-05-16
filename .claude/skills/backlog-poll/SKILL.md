@@ -45,9 +45,15 @@ the tick without further action.
      "project_owner_type": "organization" | "user",
      "project_number": <integer>,
      "repo": "<owner>/<repo>",
-     "default_branch": "main"
+     "default_branch": "main",
+     "workspace_dir": "."
    }
    ```
+
+   `workspace_dir` is the directory the orchestrator does its
+   branch work in. Default `"."` (the current checkout). For local
+   CC sessions running alongside human edits, set to a dedicated
+   git worktree (see `METHODOLOGY.md` → *Branch strategy*).
 
    If the file is missing or malformed, abort with the expected shape
    in the error message.
@@ -82,8 +88,8 @@ The query must include, per item:
 
 - The linked Issue's `number`, `title`, `body`, `state` (`OPEN` /
   `CLOSED`), and `url`.
-- The Project field values for `Status`, `Category`, `Complexity`,
-  `V`, `M`, `A`, `Total`.
+- The Project field values for `Status`, `Phase`, `Category`,
+  `Complexity`, `V`, `M`, `A`, `Total`.
 - The Issue's parent / sub-issue relationships (if any).
 - Labels on the Issue (to detect the `epic` convention).
 
@@ -112,32 +118,38 @@ This skill performs **at most one action per tick**. Predictable,
 bounded behaviour, and it gives the maintainer a chance to interject
 between actions.
 
+Decisions are made from the `(Status, Phase)` pair on the Project
+item — **API state**, never working-tree state. This is what keeps
+the orchestrator from re-triggering a phase whose output is still
+sitting in an open PR (not yet merged to `main`).
+
 Walk items in priority order (highest `Total` first; ties broken by
 oldest issue number) and pick the first that matches an actionable
 row:
 
-| Status      | Artefact state                                                       | Action                                                                       |
-|-------------|----------------------------------------------------------------------|------------------------------------------------------------------------------|
-| `Triage`    | (any)                                                                | **None** — maintainer's job to score and advance.                            |
-| `In Design` | No `specs/<n>-*/spec.md` exists                                      | Invoke `/speckit-specify`. See *Speckit invocation*.                         |
-| `In Design` | Spec has unresolved `[NEEDS CLARIFICATION]` markers                  | Invoke `/speckit-clarify` (or surface the markers in chat).                  |
-| `In Design` | Spec exists, no `plan.md`                                            | Invoke `/speckit-plan`.                                                      |
-| `In Design` | Plan exists, no `tasks.md`                                           | Invoke `/speckit-tasks`.                                                     |
-| `In Design` | Tasks exist; **Epic parent**; no sub-issues filed                    | Invoke `/speckit-taskstoissues`.                                             |
-| `In Design` | All design artefacts present (Epic: + sub-issues); design PR merged  | **None** — flag in chat that the maintainer can drag to `Ready`.             |
-| `Ready`     | (any)                                                                | **None** — maintainer's job to drag to `Doing` when capacity is available.   |
-| `Doing`     | No implementation PR open or merged                                  | Invoke `/speckit-implement`.                                                 |
-| `Doing`     | Implementation PR open                                               | **None** — but flag in chat if CI is red.                                    |
-| `Done`      | (any)                                                                | **None**.                                                                    |
+| Status      | Phase             | Action                                                                                                  |
+|-------------|-------------------|---------------------------------------------------------------------------------------------------------|
+| `Triage`    | (any)             | **None** — maintainer scores and advances.                                                              |
+| `In Design` | *(empty)*         | Create design branch `<NNN>-<slug>`; run `/speckit-specify`; commit + push; open design PR; set Phase = `Spec drafting`. |
+| `In Design` | `Spec drafting`   | If `spec.md` contains `[NEEDS CLARIFICATION]` markers, run `/speckit-clarify`. Otherwise run `/speckit-plan`; commit + push; set Phase = `Plan drafting`. |
+| `In Design` | `Plan drafting`   | Run `/speckit-tasks`; commit + push; set Phase = `Tasks drafting`.                                       |
+| `In Design` | `Tasks drafting`  | If issue has the `epic` label: run `/speckit-taskstoissues`; set Phase = `Decomposing`. Otherwise: set Phase = `Designed`. |
+| `In Design` | `Decomposing`     | Verify sub-issues exist on the parent; set Phase = `Designed`.                                          |
+| `In Design` | `Designed`        | **None** — flag in chat: "design done, drag to Ready when design PR has merged."                        |
+| `Ready`     | (any)             | **None** — maintainer drags to Doing when capacity is available.                                        |
+| `Doing`     | `Designed`        | Create impl branch `<NNN>-<slug>-impl`; run `/speckit-implement`; commit + push; open impl PR with `Closes #<n>`; set Phase = `Implementing`. |
+| `Doing`     | `Implementing`    | **None** — wait for impl PR to merge. Flag in chat if CI on the PR is red.                              |
+| `Done`      | (any)             | **None**.                                                                                                |
 
 Inconsistencies — flag in chat without taking action:
 
-- Status is `Ready` or `Doing` but no spec file exists.
-- Issue is `CLOSED` but Status is not `Done`.
-- Issue is `OPEN` but Status is `Done`.
+- `Status` is `Ready` or `Doing` but `Phase` is not at least
+  `Designed`.
+- Issue is `CLOSED` but `Status` is not `Done`.
+- Issue is `OPEN` but `Status` is `Done`.
 - `Total` is stored but one or more of V/M/A is missing.
-- Item is in `In Design` but `specs/<n>-*/` directory exists yet
-  isn't on a feature branch — likely orphaned.
+- The design branch `<NNN>-<slug>` is missing on the remote but
+  `Phase` says design work has started.
 
 If nothing is actionable and no inconsistencies, emit a single-line
 status:
@@ -181,13 +193,31 @@ Commit the lock file on the current branch (typically the speckit
 feature branch). Push the branch. This ensures cloud-CC container
 restarts can resume.
 
+### Branches
+
+Two branches per issue (see `METHODOLOGY.md` → *Branch strategy*):
+
+- **Design branch** `<NNN>-<slug>` — carries `spec.md`, `plan.md`,
+  `tasks.md` (and, for Epics, the side-effect of sub-issue creation).
+  Created on the first specify run; reused for `plan`, `tasks`, and
+  any `clarify` re-runs. One **design PR** opens after the first
+  commit and stays open through subsequent commits.
+- **Implementation branch** `<NNN>-<slug>-impl` — carries the
+  implementation. Created when `Phase = Designed` and Status moves
+  to `Doing`. One **implementation PR** opens against the default
+  branch with `Closes #<n>`.
+
+Always create branches off the default branch (`config.default_branch`),
+not off whatever branch the working tree happens to be on.
+
 ### Sequence
 
-1. Determine the feature short-name (per speckit-specify's
-   conventions). Create or check out a feature branch named per
-   `.specify/init-options.json`'s `branch_numbering` setting.
-2. Write the lock file on the feature branch. Commit and push.
-3. Follow the target speckit skill's Outline.
+1. `cd` to `config.workspace_dir`. Fetch and rebase onto the default
+   branch. Switch to (or create) the appropriate branch for the
+   selected phase per *Branches* above.
+2. Write or update the lock file on that branch. Commit and push.
+3. Read and follow the target speckit skill's Outline (treat the
+   issue body and any relevant comments as `$ARGUMENTS`).
 4. If at any point the skill needs information that isn't in the
    issue body, the issue comments, or the repo:
    - Append the question(s) to the lock file's
@@ -195,13 +225,15 @@ restarts can resume.
    - Post the questions in chat for the maintainer.
    - **Exit the tick.** Do not delete the lock.
 5. If the speckit skill completes without blocking:
-   - Ensure all generated artefacts (spec, plan, tasks, code) are
-     committed on the feature branch.
-   - Open a PR via `gh pr create`. PR body should reference the
-     issue:
-     - For spec-only PRs: `Refs #<n>`.
-     - For implementation PRs: `Closes #<n>`.
-   - Delete the lock file (in a final commit). Push.
+   - Commit the generated artefacts on the current branch and push.
+   - **First commit on a design branch**: open the design PR via
+     `gh pr create`, body referencing `Refs #<n>`. Subsequent design
+     phases just push — the existing PR auto-updates.
+   - **First commit on an impl branch**: open the impl PR with body
+     `Closes #<n>`.
+   - Delete the lock file in a final commit. Push.
+   - Update the `Phase` Project field for the issue via a GraphQL
+     mutation (e.g. → `Plan drafting` after specify completes).
 6. Report what was done in chat.
 
 ### Epic-specific step: taskstoissues
