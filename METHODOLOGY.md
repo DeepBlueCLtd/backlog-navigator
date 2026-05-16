@@ -135,32 +135,9 @@ sortable summary. Adopters who don't want this can keep a single
 
 ### Maintaining Total
 
-Projects v2 has no computed fields. A small workflow listens for item
-edits and writes `Total = V + M + A` back. Sketch:
-
-```yaml
-# .github/workflows/recompute-total.yml
-on:
-  schedule: [{ cron: "*/15 * * * *" }]   # belt-and-braces fallback
-  workflow_dispatch:
-  # Project item edits don't have a first-class trigger; either poll on
-  # a schedule or wire a project_v2_item.edited webhook via a GitHub App.
-
-jobs:
-  recompute:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Recompute Total for all items
-        env:
-          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}   # PAT with project:write
-        run: |
-          # GraphQL: list project items, read V/M/A, write V+M+A to Total
-          # See docs/methodology/recompute-total.gql for the queries.
-```
-
-A real implementation needs a GitHub App or a PAT with `project` scope;
-the schedule-based fallback handles the common case where there is no
-webhook listener.
+Projects v2 has no computed fields, so `Total = V + M + A` is written
+back by `/backlog-poll` on every tick — see *Orchestration* below. No
+separate workflow is required.
 
 ---
 
@@ -315,16 +292,12 @@ closed (GitHub enforces this automatically for sub-issues).
 
 ---
 
-## Two implementation paths
+## Orchestration
 
-Status changes need to trigger speckit skills somehow. GitHub Actions
-does not expose `project_v2_item.edited` as a native workflow trigger,
-so adopters pick one of two architectures.
-
-### Path A — Polling from a long-lived Claude Code session
-
-Recommended default. Zero GitHub infrastructure beyond the Project
-itself; human-in-the-loop is native.
+Status changes need to dispatch speckit skills somehow, and GitHub
+Actions does not expose `project_v2_item.edited` as a native workflow
+trigger. The methodology resolves this by polling from a long-lived
+Claude Code session.
 
 A maintainer starts a Claude Code session (local or in the cloud) and
 runs:
@@ -339,8 +312,7 @@ Every tick, `/backlog-poll` does roughly the following:
    what it's waiting on and exits — no new work this tick.
 2. Fetches the Project state via GraphQL.
 3. Recomputes `Total = V + M + A` for any items where it drifted, via
-   GraphQL mutation. (This subsumes the Action-based Total recomputer
-   described under *Project schema*.)
+   GraphQL mutation.
 4. For each item, reconciles current Status against on-disk artefacts
    (spec PRs, plan/tasks files, implementation PRs) and decides what's
    outstanding:
@@ -355,34 +327,7 @@ Every tick, `/backlog-poll` does roughly the following:
    `/loop` tick a no-op until the question is answered and the work
    completes — the agent removes the lock then.
 
-**Pros**: no webhook receiver, no GitHub App, no Action minutes;
-clarifying questions land in chat where you actually see them; lock
-files survive cloud-session container churn.
-
-**Cons**: requires a live CC session driving work; status-change to
-dispatch latency is the `/loop` interval (~15 minutes).
-
-### Path B — Webhook → GitHub Action
-
-For larger teams, untrusted CI, or hands-off automation without a live
-session.
-
-A GitHub App (or serverless function) listens for `project_v2_item.edited`
-webhooks. On a status change it fires a `repository_dispatch` event at
-the repo, which triggers a workflow that runs the Claude Code Action
-with the new status and issue number as inputs. The Action invokes
-the same speckit skills, but clarifying questions land as **issue
-comments** rather than chat — no live session to converse with.
-
-**Pros**: hands-off; near-instant dispatch.
-
-**Cons**: hosting a webhook receiver; human-in-the-loop is async
-through issue comments; Action minutes cost.
-
-### Trigger contracts (both paths)
-
-Whichever path, the speckit invocations on each transition are the
-same:
+The speckit invocations on each transition are:
 
 | Transition           | Skills invoked                                                                      |
 |----------------------|-------------------------------------------------------------------------------------|
@@ -390,81 +335,36 @@ same:
 | → `In Design` (Epic) | …above, then `/speckit-plan`, `/speckit-tasks`, `/speckit-taskstoissues`            |
 | → `Doing`            | `/speckit-implement`                                                                |
 
-Both transitions stop at *PR open*. Spec content and implementation
-content are reviewed by humans before they land — the agent saves
-typing, not judgement. Adopters with stronger CI and higher trust can
-extend either transition to auto-merge on green; the methodology
-recommends against starting there.
+Both transitions stop at *PR open*. Spec and implementation content
+are reviewed by humans before they land — the agent saves typing, not
+judgement. Adopters with stronger CI and higher trust can extend either
+transition to auto-merge on green; the methodology recommends against
+starting there.
+
+### A note on the webhook alternative
+
+A webhook-driven variant is possible: a GitHub App listening for
+`project_v2_item.edited`, firing `repository_dispatch` at the repo, a
+workflow invoking the Claude Code Action with the new status and
+issue number. It trades the live-session requirement for hosting a
+webhook receiver and moves human-in-the-loop questions from chat to
+issue comments. Teams that want hands-off automation can build it on
+top of the same trigger contracts above; the methodology doesn't
+recommend or document the build in detail. The polling path stays the
+canonical orchestration.
 
 ---
 
-## Reference workflow sketches
+## Reference artefacts
 
-The artefacts in this section are sketches, not turn-key. They show
-the shape — adopters fill in tokens, Project IDs, and (for Path B)
-hosting choices.
-
-### Path A: `/backlog-poll` (this repo)
+### `/backlog-poll`
 
 The orchestration command lives at `.claude/skills/backlog-poll/SKILL.md`
-in this repo. It is the reference implementation for Path A — both
-adopt-by-copy and use-by-reference are valid. See the file for the
-full prompt; the high-level flow is described in
-*Two implementation paths* above.
+in this repo. It is the canonical implementation; adopters can copy it
+into their own repo or reference this one. See the file for the full
+prompt; the high-level flow is described in *Orchestration* above.
 
-### Path B: status → agent dispatch
-
-```yaml
-# .github/workflows/project-status-trigger.yml
-# Dispatches the Claude Code Action when an item's Status changes.
-
-on:
-  repository_dispatch:
-    types: [project-status-changed]   # fired by the webhook receiver
-
-jobs:
-  dispatch:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Invoke speckit per new status
-        uses: anthropics/claude-code-action@v1  # or equivalent
-        with:
-          # Pass through to a prompt that picks the right speckit skill
-          # based on github.event.client_payload.new_status and invokes it
-          # against github.event.client_payload.issue_number.
-          prompt-file: .github/prompts/project-status-trigger.md
-```
-
-The webhook receiver (a GitHub App or serverless function) listens for
-`project_v2_item.edited`, reads the new Status, and fires
-`repository_dispatch` with `{issue_number, new_status}` in
-`client_payload`. The prompt at
-`.github/prompts/project-status-trigger.md` dispatches to the right
-speckit skill per *Trigger contracts* above.
-
-### Sketch: Total recomputer (Path B only)
-
-Path A folds Total recomputation into `/backlog-poll`. Path B needs a
-standalone workflow:
-
-```yaml
-# .github/workflows/recompute-total.yml
-on:
-  schedule: [{ cron: "*/15 * * * *" }]
-  workflow_dispatch:
-jobs:
-  recompute:
-    runs-on: ubuntu-latest
-    steps:
-      - env:
-          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}   # PAT with project:write
-        run: |
-          # GraphQL: list project items, read V/M/A, write V+M+A to Total
-          # if different.
-```
-
-### Sketch: auto-add to Project (both paths)
+### Auto-add to Project
 
 See the snippet under *Intake*. Uses `actions/add-to-project@v1`
 unchanged.
@@ -504,11 +404,10 @@ For a repo adopting this methodology:
    `.github/ISSUE_TEMPLATE/backlog-item.yml` (see *Intake*).
 6. **Add the auto-add workflow** at
    `.github/workflows/add-to-project.yml` (see *Intake*).
-7. **Pick a path** (A or B; see *Two implementation paths*):
-    - Path A: copy or reference `.claude/skills/backlog-poll/SKILL.md`,
-      then run `/loop 15m /backlog-poll` from a Claude Code session.
-    - Path B: add `.github/workflows/recompute-total.yml`, host a
-      webhook receiver, and add the status-trigger workflow.
+7. **Adopt the orchestrator**. Copy or reference
+   `.claude/skills/backlog-poll/SKILL.md`, then run
+   `/loop 15m /backlog-poll` from a Claude Code session (local or
+   cloud).
 8. **Decide your Epic convention**. The methodology assumes Epics are
    parent issues using sub-issues. If your team uses milestones or
    labels for Epics, document the deviation locally.
@@ -521,19 +420,17 @@ For a repo adopting this methodology:
 
 ## Open questions and known limits
 
-- **No first-class trigger for Project item edits.** GitHub Actions
-  does not have a native `on: project_v2_item.edited` trigger. Path A
-  works around this with a polling Claude Code session; Path B works
-  around it with a webhook receiver. Neither is free.
-- **Path A requires a live session.** If no CC session is running
+- **Requires a live Claude Code session.** If no CC session is running
   `/loop 15m /backlog-poll`, cards sit on the board untouched. For
-  cloud CC, a long-running session is the natural home; for local CC,
+  cloud CC a long-running session is the natural home; for local CC
   the maintainer has to remember to start it. Lock files in
-  `.claude/in-flight/` survive container churn so a freshly resumed
+  `.claude/in-flight/` survive container churn, so a freshly resumed
   session picks up where the last left off.
-- **Total field drift.** Path A recomputes every tick; Path B's
-  scheduled recomputer means Total can be a few minutes stale.
-  Acceptable for triage; not for hard sorting.
+- **Dispatch latency.** Status-change to action is up to one `/loop`
+  interval (~15 minutes by default). Acceptable for backlog work; tune
+  the interval if you want tighter.
+- **Total field drift within a tick.** Between ticks, V/M/A edits don't
+  immediately update Total. Acceptable for triage; not for hard sorting.
 - **Reproducibility.** Unlike a `BACKLOG.md` in git, the Project state
   at the time of a given commit cannot be reconstructed from the repo
   alone. If you need that, render a snapshot to a committed file on a
