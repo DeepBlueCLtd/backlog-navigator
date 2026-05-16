@@ -162,6 +162,7 @@ flowchart LR
     <tbody>
       <tr><td>Status</td><td>single-select</td><td>Maintainer-dragged: Triage / In Design / Ready / Doing / Done</td></tr>
       <tr><td><strong>Phase</strong></td><td>single-select</td><td><strong>Orchestrator-maintained</strong>: Spec drafting → Plan drafting → Tasks drafting → (Decomposing) → Designed → Implementing</td></tr>
+      <tr><td><strong>Owner</strong></td><td>text</td><td><strong>Worker-claimed</strong>: e.g. <code>bn-swift-mango-7234</code>. Empty = unclaimed. Multiple workers cooperate via this field.</td></tr>
       <tr><td>Category</td><td>single-select</td><td>Feature, Enhancement, Tech Debt, Bug, Documentation, Spike</td></tr>
       <tr><td>Complexity</td><td>single-select</td><td>Low / Medium / High</td></tr>
       <tr><td>V, M, A</td><td>numbers</td><td>3-dimensional priority score (0–5 each)</td></tr>
@@ -288,7 +289,8 @@ sequenceDiagram
   <ol>
     <li><span class="done">✓</span> <strong>GitHub Project created</strong> at <code>orgs/DeepBlueCLtd/projects/4</code>.</li>
     <li><span class="done">✓</span> <code>.claude/backlog-poll.config.json</code> pointing at Project #4.</li>
-    <li><span class="pending">●</span> <strong>Add the <code>Phase</code> field</strong> to Project #4 (runbook step 2b — new since project creation).</li>
+    <li><span class="done">✓</span> <strong><code>Phase</code> field</strong> added to Project #4.</li>
+    <li><span class="pending">●</span> <strong>Add the <code>Owner</code> field</strong> (text) to Project #4 — needed for the worker-pool model.</li>
     <li><span class="pending">●</span> <strong>Migrate the 9 dummy items</strong> from <code>BACKLOG.md</code> with Status + initial Phase (runbook step 7).</li>
     <li><span class="pending">●</span> Archive <code>BACKLOG.md</code> (runbook step 9).</li>
     <li><span class="pending">●</span> Open a Claude Code session &amp; run <code>/loop 15m /backlog-poll</code>.</li>

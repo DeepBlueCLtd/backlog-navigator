@@ -117,6 +117,7 @@ the repo. Configure it with these fields:
 |--------------|---------------------|------------------------------------------------------------------------------------------------------------------|
 | Status       | Single-select       | `Triage`, `In Design`, `Ready`, `Doing`, `Done`. Dragged by maintainers.                                         |
 | Phase        | Single-select       | *(empty)*, `Spec drafting`, `Plan drafting`, `Tasks drafting`, `Decomposing`, `Designed`, `Implementing`. Maintained by the orchestrator (see *Phase field*). |
+| Owner        | Text                | Worker ID (e.g. `bn-swift-mango-7234`) of the worker currently handling this item. Empty = unclaimed. See *Workers*. |
 | Category     | Single-select       | e.g. `Feature`, `Enhancement`, `Tech Debt`, `Bug`, `Documentation`, `Spike`                                      |
 | Complexity   | Single-select       | `Low`, `Medium`, `High`                                                                                          |
 | V            | Number              | Value score (0–5)                                                                                                |
@@ -454,14 +455,95 @@ canonical orchestration.
 
 ---
 
+## Workers
+
+A "worker" is a Claude Code session running `/loop 15m /backlog-poll`.
+Multiple workers can cooperate on the same Project, each handling its
+own ticket in parallel.
+
+### Joining the pool
+
+You start a worker by running `/backlog-worker-start` in a fresh CC
+session. The skill:
+
+1. Reads `repo` from `.claude/backlog-poll.config.json` and derives a
+   short repo tag (initials of hyphenated parts, e.g.
+   `backlog-navigator` → `bn`).
+2. Generates a petname identity like `bn-swift-mango-7234`. The
+   `$$` suffix is the shell's PID, preventing local collisions.
+3. Writes the identity to `/tmp/backlog-poll-worker-id`.
+4. Invokes `/loop 15m /backlog-poll`.
+
+To run a second worker on the same Project, open another CC session
+(local or cloud) and run `/backlog-worker-start` there. The second
+session generates its own petname; the two never conflict because
+`/tmp` is per-container in cloud CC and the PID suffix differs
+locally.
+
+### Claiming a ticket
+
+Each tick, `/backlog-poll` reads `Owner` for every Project item
+alongside `Status` and `Phase`. The decision is:
+
+- `Owner` == this worker → keep working on the item.
+- `Owner` == any other worker → skip it entirely.
+- `Owner` is empty → candidate for me to claim.
+
+To claim a candidate, the worker writes its identity into `Owner`
+via GraphQL, then **re-reads** `Owner` immediately. If the read-back
+returns this worker's identity, the claim succeeded. If it returns a
+different identity, another worker raced to claim it first — the
+losing worker moves on to the next candidate.
+
+The read-back-confirm pattern handles the small race window between
+two workers polling simultaneously.
+
+### Releasing a ticket
+
+Workers hold ownership only when they're actively advancing the
+item or waiting on a maintainer chat answer. At natural human-review
+gates the worker releases (clears `Owner`):
+
+- After advancing `Phase` to `Designed` — the design PR is open and
+  the maintainer needs to review and merge it before dragging to
+  Ready.
+- After opening the implementation PR (`Phase = Implementing`,
+  `Status = Doing`) — the impl PR is open awaiting review.
+
+Releasing lets a different worker pick the ticket up when it next
+becomes actionable (e.g. when the maintainer drags from Ready to
+Doing).
+
+### When workers go wrong
+
+If a worker dies (its container shuts down, it gets stuck, etc.) any
+ticket still bearing its `Owner` is stranded. Other workers, seeing
+a foreign `Owner`, will skip it forever. Recovery is currently
+manual: a maintainer clears the `Owner` field on the stranded
+ticket in the Project UI, after which any worker can re-claim it.
+
+A heartbeat field (last-seen timestamp) with stale-after-N-minutes
+auto-recovery is a future refinement; not in scope yet.
+
+---
+
 ## Reference artefacts
 
-### `/backlog-poll`
+### `/backlog-worker-start` and `/backlog-poll`
 
-The orchestration command lives at `.claude/skills/backlog-poll/SKILL.md`
-in this repo. It is the canonical implementation; adopters can copy it
-into their own repo or reference this one. See the file for the full
-prompt; the high-level flow is described in *Orchestration* above.
+Two skills together form the orchestrator:
+
+- `.claude/skills/backlog-worker-start/SKILL.md` — generates the
+  worker identity into `/tmp/backlog-poll-worker-id` and kicks off
+  `/loop 15m /backlog-poll`. Run this once per CC session.
+- `.claude/skills/backlog-poll/SKILL.md` — the per-tick logic: read
+  the worker identity, fetch Project state, claim or continue work
+  on items, advance the `Phase` field, ask questions in chat when
+  blocked.
+
+Both are canonical references; adopters can copy them into their own
+repo or reference this one. The high-level flow is described in
+*Orchestration* and *Workers* above.
 
 ### Auto-add to Project
 

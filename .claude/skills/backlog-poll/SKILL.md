@@ -60,6 +60,10 @@ the tick without further action.
 4. **GitHub auth.** Run `gh auth status`. Abort if not authenticated.
    The authenticated identity needs `repo` and `project` scopes.
 5. **Lock directory exists.** Create `.claude/in-flight/` if absent.
+6. **Worker identity.** Read `/tmp/backlog-poll-worker-id` (single
+   line). If absent, abort with: "Run `/backlog-worker-start` first
+   to establish this session's worker identity." Store the value as
+   `$WORKER_ID` for use throughout the tick.
 
 ## Lock check
 
@@ -88,8 +92,8 @@ The query must include, per item:
 
 - The linked Issue's `number`, `title`, `body`, `state` (`OPEN` /
   `CLOSED`), and `url`.
-- The Project field values for `Status`, `Phase`, `Category`,
-  `Complexity`, `V`, `M`, `A`, `Total`.
+- The Project field values for `Status`, `Phase`, `Owner`,
+  `Category`, `Complexity`, `V`, `M`, `A`, `Total`.
 - The Issue's parent / sub-issue relationships (if any).
 - Labels on the Issue (to detect the `epic` convention).
 
@@ -118,14 +122,24 @@ This skill performs **at most one action per tick**. Predictable,
 bounded behaviour, and it gives the maintainer a chance to interject
 between actions.
 
-Decisions are made from the `(Status, Phase)` pair on the Project
-item — **API state**, never working-tree state. This is what keeps
-the orchestrator from re-triggering a phase whose output is still
-sitting in an open PR (not yet merged to `main`).
+Decisions are made from the `(Status, Phase, Owner)` triple on the
+Project item — **API state**, never working-tree state. This is what
+keeps the orchestrator from re-triggering a phase whose output is
+still sitting in an open PR (not yet merged to `main`), and what lets
+multiple workers cooperate without colliding.
+
+**Ownership filter (applied first):**
+
+For each item, look at the `Owner` field:
+
+- `Owner == $WORKER_ID` — this is my ticket. Continue working on it.
+- `Owner == <some other worker>` — not mine. Skip entirely.
+- `Owner` is empty — candidate. I may try to claim it (see *Claim a
+  ticket* below).
 
 Walk items in priority order (highest `Total` first; ties broken by
-oldest issue number) and pick the first that matches an actionable
-row:
+oldest issue number). Prefer items already owned by me before
+claiming new ones. Pick the first that matches an actionable row:
 
 | Status      | Phase             | Action                                                                                                  |
 |-------------|-------------------|---------------------------------------------------------------------------------------------------------|
@@ -156,6 +170,43 @@ status:
 
 > Polled at <ts>: <N> Triage, <M> In Design, <K> Ready, <J> Doing,
 > <C> Done. All clean.
+
+## Claim a ticket
+
+Before doing actual phase work on an unowned candidate, claim it:
+
+1. Write `Owner = $WORKER_ID` for the item via
+   `updateProjectV2ItemFieldValue` GraphQL mutation.
+2. **Re-fetch the item's `Owner` field.** If the read-back returns
+   `$WORKER_ID`, claim succeeded — proceed. If it returns a different
+   value (another worker beat us to it), abandon this item and try
+   the next candidate.
+
+The read-back-confirm handles the race window between two workers
+polling simultaneously. The window is small, but the check is cheap.
+
+## Release a ticket
+
+A worker releases a ticket (clears `Owner` back to empty) when the
+ticket enters a state that requires maintainer attention:
+
+- After advancing `Phase` to `Designed` (the design PR sits open
+  awaiting maintainer review and the drag from `In Design` to
+  `Ready`).
+- After opening the implementation PR and setting `Phase` to
+  `Implementing` (the impl PR sits open awaiting maintainer review;
+  merge auto-flips Status to `Done`).
+
+Releasing means: clear `Owner` (write empty/null), then exit the tick
+without taking further action on this item. The next worker (possibly
+this same one, on a later tick after the maintainer has acted) is
+free to pick it back up if its `(Status, Phase)` becomes actionable
+again.
+
+The worker keeps ownership while inside a phase that's still
+producing artefacts (between Phase = `Spec drafting` and `Plan
+drafting`, etc.) and while blocked on a chat question (see *Lock
+files*).
 
 ## Speckit invocation
 
@@ -212,19 +263,23 @@ not off whatever branch the working tree happens to be on.
 
 ### Sequence
 
-1. `cd` to `config.workspace_dir`. Fetch and rebase onto the default
+1. **Claim** the ticket if not already owned by `$WORKER_ID` (see
+   *Claim a ticket*). If the claim attempt fails, abandon this item
+   and try the next candidate.
+2. `cd` to `config.workspace_dir`. Fetch and rebase onto the default
    branch. Switch to (or create) the appropriate branch for the
    selected phase per *Branches* above.
-2. Write or update the lock file on that branch. Commit and push.
-3. Read and follow the target speckit skill's Outline (treat the
+3. Write or update the lock file on that branch. Commit and push.
+4. Read and follow the target speckit skill's Outline (treat the
    issue body and any relevant comments as `$ARGUMENTS`).
-4. If at any point the skill needs information that isn't in the
+5. If at any point the skill needs information that isn't in the
    issue body, the issue comments, or the repo:
    - Append the question(s) to the lock file's
      `## Outstanding questions` section. Commit and push the update.
    - Post the questions in chat for the maintainer.
-   - **Exit the tick.** Do not delete the lock.
-5. If the speckit skill completes without blocking:
+   - **Exit the tick.** Do not delete the lock. **Keep ownership** —
+     the question belongs to this worker.
+6. If the speckit skill completes without blocking:
    - Commit the generated artefacts on the current branch and push.
    - **First commit on a design branch**: open the design PR via
      `gh pr create`, body referencing `Refs #<n>`. Subsequent design
@@ -234,7 +289,11 @@ not off whatever branch the working tree happens to be on.
    - Delete the lock file in a final commit. Push.
    - Update the `Phase` Project field for the issue via a GraphQL
      mutation (e.g. → `Plan drafting` after specify completes).
-6. Report what was done in chat.
+   - **Release ownership** if the new `Phase` is a human-gate state
+     (`Designed` or `Implementing` with an open PR): clear the
+     `Owner` field via GraphQL. Otherwise keep ownership for the
+     next tick's continuation work.
+7. Report what was done in chat.
 
 ### Epic-specific step: taskstoissues
 

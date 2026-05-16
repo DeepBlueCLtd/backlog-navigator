@@ -106,6 +106,10 @@ mutation($projectId: ID!, $fieldId: ID!) {
 ### 2b. Create the remaining fields
 
 ```sh
+# Text field — written by workers to claim an item
+gh project field-create "$PROJECT_NUMBER" --owner "$OWNER" \
+    --name "Owner" --data-type TEXT
+
 # Single-selects
 gh project field-create "$PROJECT_NUMBER" --owner "$OWNER" \
     --name "Phase" --data-type SINGLE_SELECT \
