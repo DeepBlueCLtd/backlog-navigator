@@ -1,8 +1,10 @@
 name: PR preview deploy
 
+# DEPRECATED: builds per-PR previews of the legacy Backlog Navigator PWA.
+# Trigger reduced to workflow_dispatch only — methodology PRs no longer
+# need (or want) a navigator-app preview. See METHODOLOGY.md.
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
+  workflow_dispatch:
 
 concurrency:
   group: pr-preview-${{ github.event.pull_request.number }}

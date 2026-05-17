@@ -1,16 +1,41 @@
 # Backlog Navigator
 
+This repo hosts **two related things**:
+
+1. **A methodology** for running a project's backlog as GitHub
+   Issues + a single Project per repo, with status transitions that
+   *drive* spec-kit and Claude Code work rather than just labelling
+   it. This is the project's main focus.
+   - **[`METHODOLOGY.md`](METHODOLOGY.md)** — the reference.
+   - **[`docs/adopt-methodology.md`](docs/adopt-methodology.md)** —
+     the how-to-adopt-it-in-your-repo walkthrough.
+   - **[Slide deck](docs/presentation/methodology-review.html)** —
+     pitch it to your team in 15 slides.
+
+2. **A standalone mobile-first PWA** ("the Backlog Navigator") for
+   editing a markdown-based `BACKLOG.md` in any repo. Predates the
+   methodology and is kept working during the transition.
+   - **[`ADOPTING.md`](ADOPTING.md)** — adoption guide for the
+     navigator app.
+   - Public instance: <https://DeepBlueCLtd.github.io/backlog-navigator/>
+
+If you're new here and want to adopt the methodology in your repo,
+**start with [`docs/adopt-methodology.md`](docs/adopt-methodology.md)**.
+
+---
+
+## The navigator app, at a glance
+
+> **⚠ DEPRECATED.** The navigator PWA is no longer actively maintained.
+> Its `BACKLOG.md` fixture has been archived, its CI workflows are
+> disabled (set to `workflow_dispatch` only), and the deployed Pages
+> instance may show stale or broken state. The sections below describe
+> the app as it was before deprecation; they're preserved for historical
+> reference and for anyone choosing to continue maintaining it.
+
 A mobile-friendly PWA that reads `BACKLOG.md` from a GitHub repo and lets
 anyone with a phone (or a desktop) triage the queue. Inline-edit cells,
 expand descriptions, push changes back as a pull request.
-
-This repo is the **standalone home** of the Backlog Navigator. It was
-extracted from `debrief/debrief-future` (`apps/backlog-navigator/`) so
-any project with a `BACKLOG.md` and speckit can adopt it without
-depending on the source monorepo.
-
-Try the public instance with the bundled dummy backlog:
-<https://DeepBlueCLtd.github.io/backlog-navigator/>
 
 ---
 
@@ -75,8 +100,13 @@ pnpm install
 pnpm dev
 ```
 
-Then open `http://localhost:5173/` to see the bundled dummy `BACKLOG.md`
-render. To point at a different repo, append `?repo=<org>/<name>&branch=<branch>`
+Then open `http://localhost:5173/`. **Note:** this repo's own
+`BACKLOG.md` has been archived to
+[`docs/history/BACKLOG.md.archived`](docs/history/BACKLOG.md.archived)
+now that the project uses the [methodology](METHODOLOGY.md) and a
+GitHub Project. The navigator's default "bundled demo" therefore needs
+a follow-up (point its default fixture at a different file or repo).
+For now, append `?repo=<org>/<name>&branch=<branch>`
 to the URL.
 
 ---

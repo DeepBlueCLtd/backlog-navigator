@@ -1,5 +1,13 @@
 # Configuration
 
+> **⚠ DEPRECATED.** This page documents configuration for the legacy
+> Backlog Navigator PWA, which is no longer actively maintained. For
+> the recommended methodology — GitHub Issues + Project driven by
+> spec-kit and Claude Code — see [`METHODOLOGY.md`](METHODOLOGY.md)
+> and [`docs/adopt-methodology.md`](docs/adopt-methodology.md).
+
+---
+
 The Backlog Navigator is configured at two levels:
 
 1. **Build-time** — `VITE_*` env vars consumed at `vite build`. These

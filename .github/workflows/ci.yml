@@ -1,9 +1,11 @@
 name: CI
 
+# DEPRECATED: this workflow tests the legacy Backlog Navigator PWA, which
+# is no longer actively maintained. Trigger reduced to workflow_dispatch
+# only — the navigator's bundled BACKLOG.md has moved to docs/history/ so
+# automatic CI runs would fail. See METHODOLOGY.md for what replaced it.
 on:
-  pull_request:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 # Minimum-scope GITHUB_TOKEN — CI is read-only; no writes needed.
 # See SECURITY.md "Workflow security baseline".

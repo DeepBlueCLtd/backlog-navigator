@@ -1,5 +1,21 @@
 # Adopting the Backlog Navigator
 
+> **⚠ DEPRECATED.** This document covers the legacy Backlog Navigator
+> PWA — a Markdown-based approach to managing a backlog through a
+> version-controlled `BACKLOG.md` file. The recommended approach is
+> now the **methodology** described in
+> [`METHODOLOGY.md`](METHODOLOGY.md), which uses GitHub Issues + a
+> single Project per repo, driven by spec-kit and Claude Code.
+>
+> If you want to **adopt the new methodology** in your repo, follow
+> [`docs/adopt-methodology.md`](docs/adopt-methodology.md).
+>
+> This file is preserved for reference and for any project that still
+> wants to use the navigator PWA against an existing `BACKLOG.md`. The
+> navigator's deployed instance is no longer actively maintained.
+
+---
+
 This document is for **other projects** that want to use the Backlog
 Navigator to read and edit their own `BACKLOG.md`. There are three
 adoption paths, ranging from zero-infrastructure to fully self-hosted.

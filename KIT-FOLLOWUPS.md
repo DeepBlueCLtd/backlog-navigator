@@ -1,5 +1,13 @@
 # Extraction-kit follow-ups
 
+> **⚠ DEPRECATED.** These notes relate to the legacy Backlog Navigator
+> PWA extraction process and are no longer actively tracked. The
+> project's working backlog is now the GitHub Project at
+> <https://github.com/orgs/DeepBlueCLtd/projects/4>; see
+> [`METHODOLOGY.md`](METHODOLOGY.md).
+
+---
+
 Bugs and gaps discovered after running the kit at
 `specs/249-extract-backlog-navigator/extraction-kit` from
 `debrief-future@claude/implement-speckit-249-xKZX8`. Each item should
