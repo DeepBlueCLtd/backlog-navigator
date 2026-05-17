@@ -66,7 +66,7 @@ And these on GitHub:
 1. **Bootstrap the Project + scaffolding.** One script, mostly
    automatic.
 2. **Manual UI steps** the script can't do (Status field options,
-   built-in workflows, `PROJECT_TOKEN` secret).
+   built-in Project workflows — including the auto-add).
 3. **Install spec-kit** (one `uv` command).
 4. **Commit** the new files and **push**.
 5. **Start the orchestrator** from a Claude Code session.
@@ -111,10 +111,13 @@ git clone https://github.com/DeepBlueCLtd/backlog-navigator /tmp/bn
 4. Writes `.claude/backlog-poll.config.json` pointing the orchestrator
    at the new Project.
 5. Writes `.github/ISSUE_TEMPLATE/backlog-item.yml`.
-6. Writes `.github/workflows/add-to-project.yml`.
-7. Fetches the two orchestrator skills from the methodology repo into
+6. Fetches the two orchestrator skills from the methodology repo into
    your `.claude/skills/`.
-8. Prints the remaining manual UI steps.
+7. Prints the remaining manual UI steps.
+
+(There is **no auto-add workflow file** to write — the auto-add
+behaviour is handled by a built-in Project workflow you'll enable in
+Phase 2. No `PROJECT_TOKEN` secret or external Action needed.)
 
 ### Verify Phase 1
 
@@ -124,11 +127,10 @@ After the script exits:
 ls .claude/backlog-poll.config.json \
    .claude/skills/backlog-worker-start/SKILL.md \
    .claude/skills/backlog-poll/SKILL.md \
-   .github/ISSUE_TEMPLATE/backlog-item.yml \
-   .github/workflows/add-to-project.yml
+   .github/ISSUE_TEMPLATE/backlog-item.yml
 ```
 
-All five files should exist. And:
+All four files should exist. And:
 
 ```sh
 gh project field-list <project-number> --owner your-org \
@@ -168,34 +170,27 @@ them.
    - `Done`
 4. Save.
 
-### 2b. Configure the built-in workflows
+### 2b. Configure the built-in Project workflows
+
+Three workflows give you the full auto-triage flow without any
+secrets or GitHub Actions:
 
 1. In the Project, click **Workflows** (top-right).
-2. **"Item added to project"** → enable → set action to
+2. **"Auto-add to project"** → enable.
+   - Set the filter to `repo:your-org/your-repo is:issue`
+     (substitute your owner/repo).
+   - Optional: add `is:open` and exclude labels you don't want on the
+     backlog (e.g. `-label:question`).
+   - Save.
+3. **"Item added to project"** → enable → set action to
    *Set value: Status = Triage*. Save.
-3. **"Item closed"** → enable → set action to
+4. **"Item closed"** → enable → set action to
    *Set value: Status = Done*. Save.
 
-These workflows make sure new issues land in `Triage` automatically
-and that closing an issue marks it `Done` on the board.
+Together: new issues automatically land in `Triage`; closing an issue
+marks it `Done`. No `PROJECT_TOKEN` secret, no Action, no PAT.
 
-### 2c. Add the `PROJECT_TOKEN` secret
-
-The auto-add workflow needs a token with `project: write` to add
-issues to the Project. The default `GITHUB_TOKEN` doesn't have that.
-
-1. Create a fine-grained PAT at
-   <https://github.com/settings/personal-access-tokens>.
-   - Resource owner: `your-org`
-   - Repository access: just `your-repo` is fine
-   - Organization permissions: **Projects → Read and write**
-2. In your repo: **Settings → Secrets and variables → Actions →
-   New repository secret**.
-   - Name: `PROJECT_TOKEN`
-   - Value: paste the PAT
-3. Save.
-
-### 2d. Verify Phase 2
+### 2c. Verify Phase 2
 
 File a throwaway issue in your repo (the regular GitHub Issues UI is
 fine). Within ~30 seconds it should appear on your Project board
@@ -235,8 +230,7 @@ few quality skills (`speckit-clarify`, `speckit-analyze`,
 ## Phase 4 — Commit and push
 
 ```sh
-git add .claude/ .specify/ .github/ISSUE_TEMPLATE/ \
-        .github/workflows/add-to-project.yml CLAUDE.md
+git add .claude/ .specify/ .github/ISSUE_TEMPLATE/ CLAUDE.md
 git commit -m "feat: adopt backlog methodology (Project #<n>)"
 git push
 ```
@@ -399,19 +393,18 @@ top of the script lists which ones are missing — add them with
 You filed a test issue and it didn't show up on the Project board
 within ~60 seconds.
 
-Check the workflow ran:
-
-```sh
-gh run list --workflow=add-to-project.yml --limit 3
-```
-
 Common causes:
 
-- **`PROJECT_TOKEN` secret not set.** Add it (Phase 2c).
-- **PAT scope missing `project: write`.** Re-create the PAT.
-- **`actions/add-to-project@v1` not authorised for your org's
-  Projects.** Check your org's Actions policy permits external
-  actions.
+- **The "Auto-add to project" Project workflow isn't enabled.** Open
+  the Project → Workflows → confirm "Auto-add to project" is enabled.
+- **Filter doesn't match.** Open that workflow's filter and confirm
+  it's `repo:your-org/your-repo is:issue` (or whatever you set).
+  Filter is case-sensitive.
+- **The Project doesn't have access to the repo.** A
+  user-owned Project can only see public repos by default — if your
+  repo is private, the Project must be owned by an org/user with
+  access.
+- **You're filing in a different repo than the filter expects.**
 
 ### `/backlog-worker-start` says config not found
 

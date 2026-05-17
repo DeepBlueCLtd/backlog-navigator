@@ -111,9 +111,8 @@ config_file=".claude/backlog-poll.config.json"
 worker_skill=".claude/skills/backlog-worker-start/SKILL.md"
 poll_skill=".claude/skills/backlog-poll/SKILL.md"
 issue_template=".github/ISSUE_TEMPLATE/backlog-item.yml"
-add_workflow=".github/workflows/add-to-project.yml"
 
-for f in "$config_file" "$worker_skill" "$poll_skill" "$issue_template" "$add_workflow"; do
+for f in "$config_file" "$worker_skill" "$poll_skill" "$issue_template"; do
   if [[ -f "$f" ]]; then
     ok "$f present"
   else

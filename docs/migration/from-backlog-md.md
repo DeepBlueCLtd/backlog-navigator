@@ -58,7 +58,8 @@ scripts/setup-project.sh <owner> <repo> [project-title]
 ```
 
 It does what the API allows and prints the remaining manual UI steps
-(Status field options, built-in workflows, `PROJECT_TOKEN` secret).
+(Status field options and the three built-in Project workflows —
+auto-add, item-added, item-closed).
 Skip ahead to **Step 7** after running it.
 
 If you'd rather walk through each step manually (recommended the first
@@ -198,16 +199,16 @@ Commit it to your default branch.
 
 ---
 
-## Step 6 — Add the auto-add workflow
+## Step 6 — Enable the auto-add Project workflow
 
-Create `.github/workflows/add-to-project.yml` with the snippet from
-[`METHODOLOGY.md`](../../METHODOLOGY.md#auto-add-to-project). You'll
-need a secret called `PROJECT_TOKEN` — a fine-grained PAT with
-`project: write` for the Project's owner. Add it in
-**Settings → Secrets and variables → Actions**.
+In the Project UI → Workflows panel, enable **"Auto-add to project"**
+with a filter like `repo:<owner>/<repo> is:issue`. Pair it with the
+**"Item added to project"** workflow set to *Set value: Status =
+Triage*. No GitHub Action, no `PROJECT_TOKEN`, no PAT — Projects v2
+handles it natively.
 
-Commit and push the workflow. Test it by opening a throw-away issue
-and confirming it lands in the Project as `Triage`. Close it
+Test by opening a throw-away issue and confirming it lands on the
+board as `Triage` within ~30 seconds. Close it
 afterwards.
 
 ---
