@@ -93,8 +93,13 @@ pnpm install
 pnpm dev
 ```
 
-Then open `http://localhost:5173/` to see the bundled dummy `BACKLOG.md`
-render. To point at a different repo, append `?repo=<org>/<name>&branch=<branch>`
+Then open `http://localhost:5173/`. **Note:** this repo's own
+`BACKLOG.md` has been archived to
+[`docs/history/BACKLOG.md.archived`](docs/history/BACKLOG.md.archived)
+now that the project uses the [methodology](METHODOLOGY.md) and a
+GitHub Project. The navigator's default "bundled demo" therefore needs
+a follow-up (point its default fixture at a different file or repo).
+For now, append `?repo=<org>/<name>&branch=<branch>`
 to the URL.
 
 ---

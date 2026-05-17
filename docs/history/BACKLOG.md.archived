@@ -1,4 +1,22 @@
-# Backlog — DeepBlueCLtd/backlog-navigator
+# Backlog (ARCHIVED) — DeepBlueCLtd/backlog-navigator
+
+> **This file is archived.**
+>
+> The live backlog for this repo moved to the GitHub Project on
+> **2026-05-16**: <https://github.com/orgs/DeepBlueCLtd/projects/4>.
+>
+> Issues filed from now on land on that board; the orchestrator
+> (`/backlog-worker-start` + `/backlog-poll`) drives spec/plan/tasks/
+> implementation work from there. See [`METHODOLOGY.md`](../../METHODOLOGY.md)
+> for the model and [`docs/adopt-methodology.md`](../adopt-methodology.md)
+> for the adoption walkthrough.
+>
+> The 12-row dataset preserved below is **historical only** — kept
+> for posterity and for the navigator PWA's bundled-demo path (which
+> still reads this file's previous location and will need a follow-up
+> update). Do not edit it expecting the changes to drive work.
+
+---
 
 A bundled dummy dataset shipped with the Backlog Navigator standalone repo.
 Renders at the default URL (no query params) so reviewers can exercise
