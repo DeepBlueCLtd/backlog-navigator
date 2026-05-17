@@ -285,28 +285,19 @@ arguments.
 
 ### Auto-add to Project
 
-A workflow file in the repo adds every newly opened issue to the
-Project in the `Triage` column:
+Use the built-in **"Auto-add to project"** Project workflow (Project
+UI → Workflows). It watches one or more repos for new issues and
+adds them to the Project automatically. No GitHub Action, no PAT,
+no `PROJECT_TOKEN` secret.
 
-```yaml
-# .github/workflows/add-to-project.yml
-on:
-  issues:
-    types: [opened]
+Configure it with a filter like:
 
-jobs:
-  add:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/add-to-project@v1
-        with:
-          project-url: https://github.com/orgs/<your-org>/projects/<n>
-          github-token: ${{ secrets.PROJECT_TOKEN }}
+```
+repo:<your-org>/<your-repo> is:issue
 ```
 
-The action sets the default status to whatever the Project has
-configured as its default — set that to `Triage` in the Project's
-settings.
+…and pair it with the **"Item added to project"** workflow set to
+*Set value: Status = Triage*, so newly added items land in Triage.
 
 ---
 
@@ -547,8 +538,8 @@ repo or reference this one. The high-level flow is described in
 
 ### Auto-add to Project
 
-See the snippet under *Intake*. Uses `actions/add-to-project@v1`
-unchanged.
+A built-in Project workflow handles this — see *Intake → Auto-add
+to Project*. No artefact in the repo is required.
 
 ---
 
@@ -588,31 +579,32 @@ operational guide.
 >   | bash -s your-org your-repo
 > ```
 >
-> It prints the remaining manual UI steps (Status options, built-in
-> workflows, `PROJECT_TOKEN` secret).
+> It prints the remaining manual UI steps (Status options and the
+> three built-in Project workflows).
 
 1. **Install spec-kit** (see *Toolchain*). Commit `.claude/skills/` and
    `.specify/`.
 2. **Create the Project**. One per repo. Visibility: public. Configure
    the field schema in *Project schema*.
-3. **Set the default Status** to `Triage` in the Project's settings.
-4. **Enable GitHub's built-in `item_closed → Done` Project workflow.**
-5. **Add the issue template** at
+3. **Enable the three built-in Project workflows** in the Project's
+   Workflows panel:
+   - "Auto-add to project" — filter on your repo.
+   - "Item added to project" → Set Status to `Triage`.
+   - "Item closed" → Set Status to `Done`.
+4. **Add the issue template** at
    `.github/ISSUE_TEMPLATE/backlog-item.yml` (see *Intake*).
-6. **Add the auto-add workflow** at
-   `.github/workflows/add-to-project.yml` (see *Intake*).
-7. **Adopt the orchestrator**. Copy or reference
+5. **Adopt the orchestrator**. Copy or reference
    `.claude/skills/backlog-worker-start/SKILL.md` and
    `.claude/skills/backlog-poll/SKILL.md`, then run
    `/backlog-worker-start` from a Claude Code session (local or
    cloud).
-8. **Decide your Epic convention**. The methodology assumes Epics are
+6. **Decide your Epic convention**. The methodology assumes Epics are
    parent issues using sub-issues. If your team uses milestones or
    labels for Epics, document the deviation locally.
-9. **Link the Project** from `README.md` and `CONTRIBUTING.md`.
-10. **Retire any prior `BACKLOG.md`**. Migrate items by filing them as
-    issues (one-time effort) and archiving the file. A reference
-    runbook lives at `docs/migration/from-backlog-md.md` in this repo.
+7. **Link the Project** from `README.md` and `CONTRIBUTING.md`.
+8. **Retire any prior `BACKLOG.md`**. Migrate items by filing them as
+   issues (one-time effort) and archiving the file. A reference
+   runbook lives at `docs/migration/from-backlog-md.md` in this repo.
 
 ---
 

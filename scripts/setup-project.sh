@@ -80,7 +80,7 @@ echo "============================================================"
 echo
 
 # ---------- create project ----------
-echo "[1/7] Creating Project '$TITLE'..."
+echo "[1/6] Creating Project '$TITLE'..."
 project_json=$(gh project create --owner "$OWNER" --title "$TITLE" --format json)
 PROJECT_NUMBER=$(echo "$project_json" | jq -r '.number')
 PROJECT_ID=$(echo "$project_json" | jq -r '.id')
@@ -99,7 +99,7 @@ echo "      (owner type: $OWNER_TYPE)"
 echo
 
 # ---------- custom fields ----------
-echo "[2/7] Adding custom fields..."
+echo "[2/6] Adding custom fields..."
 
 # Text
 gh project field-create "$PROJECT_NUMBER" --owner "$OWNER" \
@@ -134,7 +134,7 @@ done
 echo
 
 # ---------- visibility ----------
-echo "[3/7] Setting visibility to public..."
+echo "[3/6] Setting visibility to public..."
 gh api graphql -f query='
 mutation($projectId: ID!) {
   updateProjectV2(input: { projectId: $projectId, public: true }) {
@@ -145,7 +145,7 @@ echo "      ✓ public"
 echo
 
 # ---------- config file ----------
-echo "[4/7] Writing .claude/backlog-poll.config.json..."
+echo "[4/6] Writing .claude/backlog-poll.config.json..."
 mkdir -p .claude
 cat > .claude/backlog-poll.config.json <<EOF
 {
@@ -161,7 +161,7 @@ echo "      ✓ wrote .claude/backlog-poll.config.json"
 echo
 
 # ---------- issue template ----------
-echo "[5/7] Writing .github/ISSUE_TEMPLATE/backlog-item.yml..."
+echo "[5/6] Writing .github/ISSUE_TEMPLATE/backlog-item.yml..."
 mkdir -p .github/ISSUE_TEMPLATE
 cat > .github/ISSUE_TEMPLATE/backlog-item.yml <<'EOF'
 name: Backlog item
@@ -179,31 +179,10 @@ EOF
 echo "      ✓ wrote .github/ISSUE_TEMPLATE/backlog-item.yml"
 echo
 
-# ---------- auto-add workflow ----------
-echo "[6/7] Writing .github/workflows/add-to-project.yml..."
-mkdir -p .github/workflows
-cat > .github/workflows/add-to-project.yml <<EOF
-name: Add issues to backlog
-on:
-  issues:
-    types: [opened]
-
-jobs:
-  add:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/add-to-project@v1
-        with:
-          project-url: $PROJECT_URL
-          github-token: \${{ secrets.PROJECT_TOKEN }}
-EOF
-echo "      ✓ wrote .github/workflows/add-to-project.yml"
-echo
-
 # ---------- orchestrator skills ----------
 SKILLS_FETCHED=""
 if [[ "$SKIP_SKILL_FETCH" != "1" ]]; then
-  echo "[7/7] Fetching orchestrator skills from $SOURCE_REPO@$SOURCE_BRANCH..."
+  echo "[6/6] Fetching orchestrator skills from $SOURCE_REPO@$SOURCE_BRANCH..."
   mkdir -p .claude/skills/backlog-worker-start .claude/skills/backlog-poll
   fetch_skill() {
     local name="$1"
@@ -220,7 +199,7 @@ if [[ "$SKIP_SKILL_FETCH" != "1" ]]; then
   SKILLS_FETCHED="yes"
   echo
 else
-  echo "[7/7] Skipped skill fetch (SKIP_SKILL_FETCH=1)."
+  echo "[6/6] Skipped skill fetch (SKIP_SKILL_FETCH=1)."
   echo "      Copy .claude/skills/backlog-worker-start/ and .claude/skills/backlog-poll/"
   echo "      from $SOURCE_REPO before running /backlog-worker-start."
   echo
@@ -235,7 +214,6 @@ Project:  $PROJECT_URL
 Files written:
   .claude/backlog-poll.config.json
   .github/ISSUE_TEMPLATE/backlog-item.yml
-  .github/workflows/add-to-project.yml
 $( [[ -n "$SKILLS_FETCHED" ]] && echo "  .claude/skills/backlog-worker-start/SKILL.md
   .claude/skills/backlog-poll/SKILL.md" )
 
@@ -249,32 +227,28 @@ Remaining manual steps (UI / one-off):
      Triage, In Design, Ready, Doing, Done
 
 2. Configure built-in Project workflows
-   - In the Project, click 'Workflows' (top-right).
-   - Enable "Item added to project" → action: Set Status to Triage.
-   - Enable "Item closed"           → action: Set Status to Done.
+   In the Project, click 'Workflows' (top-right). Enable these three:
+   - "Auto-add to project"     → filter: repo:$OWNER/$REPO is:issue
+                                 (auto-adds new issues; no Action / PAT
+                                  needed)
+   - "Item added to project"   → action: Set Status to Triage
+   - "Item closed"             → action: Set Status to Done
 
-3. Add the PROJECT_TOKEN secret to the repo
-   - GitHub → repo Settings → Secrets and variables → Actions → New
-     repository secret.
-   - Name:  PROJECT_TOKEN
-   - Value: a fine-grained PAT with project:write scope for $OWNER.
-
-4. Install spec-kit (creates .specify/ and .claude/skills/speckit-*/):
+3. Install spec-kit (creates .specify/ and .claude/skills/speckit-*/):
    uv tool run --from git+https://github.com/github/spec-kit.git \\
        specify init . --integration claude --force
 
-5. Commit the new files:
+4. Commit the new files:
    git add .claude/ .specify/ \\
            .github/ISSUE_TEMPLATE/backlog-item.yml \\
-           .github/workflows/add-to-project.yml \\
            CLAUDE.md
    git commit -m "feat: adopt backlog methodology (Project #$PROJECT_NUMBER)"
    git push
 
-6. (Optional) Migrate any existing BACKLOG.md items
+5. (Optional) Migrate any existing BACKLOG.md items
    See docs/migration/from-backlog-md.md in $SOURCE_REPO.
 
-7. Start the orchestrator
+6. Start the orchestrator
    In a Claude Code session at this repo, run:
    /backlog-worker-start
 
