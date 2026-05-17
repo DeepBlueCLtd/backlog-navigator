@@ -1,13 +1,9 @@
 name: Lighthouse PWA gate
 
+# DEPRECATED: gates the legacy Backlog Navigator PWA. Trigger reduced to
+# workflow_dispatch only — see METHODOLOGY.md for what replaced the
+# navigator.
 on:
-  pull_request:
-    paths:
-      - 'src/**'
-      - 'public/**'
-      - 'vite.config.ts'
-      - '.lighthouserc.json'
-      - '.github/workflows/lighthouse.yml'
   workflow_dispatch:
 
 # Minimum-scope GITHUB_TOKEN. Lighthouse-CI only needs to read source; the

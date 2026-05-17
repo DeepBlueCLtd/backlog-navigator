@@ -26,6 +26,13 @@ If you're new here and want to adopt the methodology in your repo,
 
 ## The navigator app, at a glance
 
+> **⚠ DEPRECATED.** The navigator PWA is no longer actively maintained.
+> Its `BACKLOG.md` fixture has been archived, its CI workflows are
+> disabled (set to `workflow_dispatch` only), and the deployed Pages
+> instance may show stale or broken state. The sections below describe
+> the app as it was before deprecation; they're preserved for historical
+> reference and for anyone choosing to continue maintaining it.
+
 A mobile-friendly PWA that reads `BACKLOG.md` from a GitHub repo and lets
 anyone with a phone (or a desktop) triage the queue. Inline-edit cells,
 expand descriptions, push changes back as a pull request.

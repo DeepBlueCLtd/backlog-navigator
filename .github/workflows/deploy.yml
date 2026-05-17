@@ -1,8 +1,11 @@
 name: Deploy to GitHub Pages
 
+# DEPRECATED: deploys the legacy Backlog Navigator PWA. The bundled
+# BACKLOG.md fixture has been archived, so deploying-as-is would push a
+# broken default-view to the Pages site. Trigger reduced to
+# workflow_dispatch only so it can be reactivated if the navigator is
+# ever maintained again. See METHODOLOGY.md for what replaced it.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 concurrency:

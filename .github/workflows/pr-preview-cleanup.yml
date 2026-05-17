@@ -1,8 +1,9 @@
 name: PR preview cleanup
 
+# DEPRECATED: cleans up per-PR previews of the legacy Backlog Navigator
+# PWA. Trigger reduced to workflow_dispatch only. See METHODOLOGY.md.
 on:
-  pull_request:
-    types: [closed]
+  workflow_dispatch:
 
 concurrency:
   group: pr-preview-cleanup-${{ github.event.pull_request.number }}
