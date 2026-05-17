@@ -3,7 +3,7 @@
 # scripts/setup-project.sh
 #
 # One-shot setup of a GitHub Project for a repo adopting the backlog
-# methodology. See ../METHODOLOGY.md and ../docs/migration/from-backlog-md.md
+# methodology. See ../METHODOLOGY.md and ../docs/adopt-methodology.md
 # for context.
 #
 # Does as much as the GitHub API allows; prints clear manual steps for
@@ -14,12 +14,18 @@
 # Usage:
 #   scripts/setup-project.sh <owner> <repo> [project-title]
 #
+# Optional flags (set as env vars):
+#   SOURCE_BRANCH=main            # methodology repo branch to fetch skills from
+#   SOURCE_REPO=DeepBlueCLtd/backlog-navigator
+#   SKIP_SKILL_FETCH=0            # set to 1 to skip fetching orchestrator skills
+#
 # Example:
 #   scripts/setup-project.sh DeepBlueCLtd backlog-navigator "Backlog Navigator"
 #
 # Prerequisites:
 #   - gh CLI 2.40+, authenticated with scopes: repo, project, read:org
 #   - jq
+#   - curl (for fetching skill files)
 #   - Run from the root of the target repo's working tree (so config and
 #     workflow files land in the right place).
 #
@@ -31,19 +37,29 @@ OWNER="${1:-}"
 REPO="${2:-}"
 TITLE="${3:-${REPO} backlog}"
 
+SOURCE_REPO="${SOURCE_REPO:-DeepBlueCLtd/backlog-navigator}"
+SOURCE_BRANCH="${SOURCE_BRANCH:-main}"
+SKIP_SKILL_FETCH="${SKIP_SKILL_FETCH:-0}"
+
 if [[ -z "$OWNER" || -z "$REPO" ]]; then
   cat <<EOF >&2
 Usage: $0 <owner> <repo> [project-title]
 
 Example:
   $0 DeepBlueCLtd backlog-navigator "Backlog Navigator"
+
+Optional environment variables:
+  SOURCE_BRANCH=main           # branch of $SOURCE_REPO to fetch skills from
+  SOURCE_REPO=owner/repo       # methodology repo (default: $SOURCE_REPO)
+  SKIP_SKILL_FETCH=1           # skip fetching the orchestrator skills
 EOF
   exit 2
 fi
 
 # ---------- prereqs ----------
-command -v gh >/dev/null || { echo "ERROR: gh CLI not installed" >&2; exit 1; }
-command -v jq >/dev/null || { echo "ERROR: jq not installed" >&2; exit 1; }
+command -v gh   >/dev/null || { echo "ERROR: gh CLI not installed" >&2; exit 1; }
+command -v jq   >/dev/null || { echo "ERROR: jq not installed" >&2; exit 1; }
+command -v curl >/dev/null || { echo "ERROR: curl not installed" >&2; exit 1; }
 
 if ! gh auth status >/dev/null 2>&1; then
   echo "ERROR: not authenticated with gh. Run:" >&2
@@ -64,7 +80,7 @@ echo "============================================================"
 echo
 
 # ---------- create project ----------
-echo "[1/6] Creating Project '$TITLE'..."
+echo "[1/7] Creating Project '$TITLE'..."
 project_json=$(gh project create --owner "$OWNER" --title "$TITLE" --format json)
 PROJECT_NUMBER=$(echo "$project_json" | jq -r '.number')
 PROJECT_ID=$(echo "$project_json" | jq -r '.id')
@@ -83,7 +99,7 @@ echo "      (owner type: $OWNER_TYPE)"
 echo
 
 # ---------- custom fields ----------
-echo "[2/6] Adding custom fields..."
+echo "[2/7] Adding custom fields..."
 
 # Text
 gh project field-create "$PROJECT_NUMBER" --owner "$OWNER" \
@@ -118,7 +134,7 @@ done
 echo
 
 # ---------- visibility ----------
-echo "[3/6] Setting visibility to public..."
+echo "[3/7] Setting visibility to public..."
 gh api graphql -f query='
 mutation($projectId: ID!) {
   updateProjectV2(input: { projectId: $projectId, public: true }) {
@@ -129,7 +145,7 @@ echo "      ✓ public"
 echo
 
 # ---------- config file ----------
-echo "[4/6] Writing .claude/backlog-poll.config.json..."
+echo "[4/7] Writing .claude/backlog-poll.config.json..."
 mkdir -p .claude
 cat > .claude/backlog-poll.config.json <<EOF
 {
@@ -145,7 +161,7 @@ echo "      ✓ wrote .claude/backlog-poll.config.json"
 echo
 
 # ---------- issue template ----------
-echo "[5/6] Writing .github/ISSUE_TEMPLATE/backlog-item.yml..."
+echo "[5/7] Writing .github/ISSUE_TEMPLATE/backlog-item.yml..."
 mkdir -p .github/ISSUE_TEMPLATE
 cat > .github/ISSUE_TEMPLATE/backlog-item.yml <<'EOF'
 name: Backlog item
@@ -164,7 +180,7 @@ echo "      ✓ wrote .github/ISSUE_TEMPLATE/backlog-item.yml"
 echo
 
 # ---------- auto-add workflow ----------
-echo "[6/6] Writing .github/workflows/add-to-project.yml..."
+echo "[6/7] Writing .github/workflows/add-to-project.yml..."
 mkdir -p .github/workflows
 cat > .github/workflows/add-to-project.yml <<EOF
 name: Add issues to backlog
@@ -184,6 +200,32 @@ EOF
 echo "      ✓ wrote .github/workflows/add-to-project.yml"
 echo
 
+# ---------- orchestrator skills ----------
+SKILLS_FETCHED=""
+if [[ "$SKIP_SKILL_FETCH" != "1" ]]; then
+  echo "[7/7] Fetching orchestrator skills from $SOURCE_REPO@$SOURCE_BRANCH..."
+  mkdir -p .claude/skills/backlog-worker-start .claude/skills/backlog-poll
+  fetch_skill() {
+    local name="$1"
+    local url="https://raw.githubusercontent.com/${SOURCE_REPO}/${SOURCE_BRANCH}/.claude/skills/${name}/SKILL.md"
+    if curl -fsSL "$url" -o ".claude/skills/${name}/SKILL.md"; then
+      echo "      ✓ .claude/skills/${name}/SKILL.md"
+    else
+      echo "      ✗ failed to fetch ${name} from ${url}" >&2
+      return 1
+    fi
+  }
+  fetch_skill "backlog-worker-start"
+  fetch_skill "backlog-poll"
+  SKILLS_FETCHED="yes"
+  echo
+else
+  echo "[7/7] Skipped skill fetch (SKIP_SKILL_FETCH=1)."
+  echo "      Copy .claude/skills/backlog-worker-start/ and .claude/skills/backlog-poll/"
+  echo "      from $SOURCE_REPO before running /backlog-worker-start."
+  echo
+fi
+
 # ---------- summary + manual steps ----------
 cat <<EOF
 ============================================================
@@ -194,6 +236,8 @@ Files written:
   .claude/backlog-poll.config.json
   .github/ISSUE_TEMPLATE/backlog-item.yml
   .github/workflows/add-to-project.yml
+$( [[ -n "$SKILLS_FETCHED" ]] && echo "  .claude/skills/backlog-worker-start/SKILL.md
+  .claude/skills/backlog-poll/SKILL.md" )
 
 ------------------------------------------------------------
 Remaining manual steps (UI / one-off):
@@ -215,23 +259,29 @@ Remaining manual steps (UI / one-off):
    - Name:  PROJECT_TOKEN
    - Value: a fine-grained PAT with project:write scope for $OWNER.
 
-4. Commit the new files:
-   git add .claude/backlog-poll.config.json \\
-           .github/ISSUE_TEMPLATE/backlog-item.yml \\
-           .github/workflows/add-to-project.yml
-   git commit -m "feat: adopt backlog methodology (Project #$PROJECT_NUMBER)"
-   git push
-
-5. Install spec-kit if not already present (creates .specify/ and
-   .claude/skills/speckit-*/):
+4. Install spec-kit (creates .specify/ and .claude/skills/speckit-*/):
    uv tool run --from git+https://github.com/github/spec-kit.git \\
        specify init . --integration claude --force
 
-6. Migrate any existing BACKLOG.md items
-   See docs/migration/from-backlog-md.md, step 7 onward.
+5. Commit the new files:
+   git add .claude/ .specify/ \\
+           .github/ISSUE_TEMPLATE/backlog-item.yml \\
+           .github/workflows/add-to-project.yml \\
+           CLAUDE.md
+   git commit -m "feat: adopt backlog methodology (Project #$PROJECT_NUMBER)"
+   git push
 
-7. Start polling
+6. (Optional) Migrate any existing BACKLOG.md items
+   See docs/migration/from-backlog-md.md in $SOURCE_REPO.
+
+7. Start the orchestrator
    In a Claude Code session at this repo, run:
    /backlog-worker-start
+
+For the full walkthrough, see:
+   https://github.com/$SOURCE_REPO/blob/$SOURCE_BRANCH/docs/adopt-methodology.md
+
+Verify your setup any time:
+   curl -fsSL https://raw.githubusercontent.com/$SOURCE_REPO/$SOURCE_BRANCH/scripts/check-setup.sh | bash
 ============================================================
 EOF

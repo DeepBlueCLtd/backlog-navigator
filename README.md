@@ -1,16 +1,34 @@
 # Backlog Navigator
 
+This repo hosts **two related things**:
+
+1. **A methodology** for running a project's backlog as GitHub
+   Issues + a single Project per repo, with status transitions that
+   *drive* spec-kit and Claude Code work rather than just labelling
+   it. This is the project's main focus.
+   - **[`METHODOLOGY.md`](METHODOLOGY.md)** — the reference.
+   - **[`docs/adopt-methodology.md`](docs/adopt-methodology.md)** —
+     the how-to-adopt-it-in-your-repo walkthrough.
+   - **[Slide deck](docs/presentation/methodology-review.html)** —
+     pitch it to your team in 15 slides.
+
+2. **A standalone mobile-first PWA** ("the Backlog Navigator") for
+   editing a markdown-based `BACKLOG.md` in any repo. Predates the
+   methodology and is kept working during the transition.
+   - **[`ADOPTING.md`](ADOPTING.md)** — adoption guide for the
+     navigator app.
+   - Public instance: <https://DeepBlueCLtd.github.io/backlog-navigator/>
+
+If you're new here and want to adopt the methodology in your repo,
+**start with [`docs/adopt-methodology.md`](docs/adopt-methodology.md)**.
+
+---
+
+## The navigator app, at a glance
+
 A mobile-friendly PWA that reads `BACKLOG.md` from a GitHub repo and lets
 anyone with a phone (or a desktop) triage the queue. Inline-edit cells,
 expand descriptions, push changes back as a pull request.
-
-This repo is the **standalone home** of the Backlog Navigator. It was
-extracted from `debrief/debrief-future` (`apps/backlog-navigator/`) so
-any project with a `BACKLOG.md` and speckit can adopt it without
-depending on the source monorepo.
-
-Try the public instance with the bundled dummy backlog:
-<https://DeepBlueCLtd.github.io/backlog-navigator/>
 
 ---
 

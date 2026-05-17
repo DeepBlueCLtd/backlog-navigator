@@ -573,13 +573,23 @@ output to a committed file — the methodology does not require it.
 
 ## Adoption checklist
 
-For a repo adopting this methodology:
+**The recommended way to adopt this methodology in your own repo is
+the walkthrough at [`docs/adopt-methodology.md`](docs/adopt-methodology.md).**
+It gives you literal commands in order, with verification steps and a
+troubleshooting section.
 
-> **Fast path**: this repo ships `scripts/setup-project.sh` which
-> handles steps 2, 5, 6 and the config file in one command:
-> `scripts/setup-project.sh <owner> <repo>`. It prints what remains
-> as manual UI steps (Status options, built-in workflows, the
-> `PROJECT_TOKEN` secret). Steps 1 and 7+ are still done by hand.
+The checklist below is a high-level reference; the walkthrough is the
+operational guide.
+
+> **One-line shortcut** (handles steps 2, 5, 6, 7 + the config file):
+>
+> ```sh
+> curl -fsSL https://raw.githubusercontent.com/DeepBlueCLtd/backlog-navigator/main/scripts/setup-project.sh \
+>   | bash -s your-org your-repo
+> ```
+>
+> It prints the remaining manual UI steps (Status options, built-in
+> workflows, `PROJECT_TOKEN` secret).
 
 1. **Install spec-kit** (see *Toolchain*). Commit `.claude/skills/` and
    `.specify/`.
