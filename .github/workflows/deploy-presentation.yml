@@ -1,0 +1,34 @@
+name: Deploy slide deck to GitHub Pages
+
+# Publishes the methodology slide deck to the existing gh-pages site at
+# /backlog-navigator/presentation/ WITHOUT touching the Backlog Navigator
+# SPA that lives at the Pages root. The deploy below targets the
+# `presentation` sub-folder, so its clean step is scoped to that folder
+# and never wipes the SPA, its assets, or the PR-preview folders.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/presentation/**'
+      - '.github/workflows/deploy-presentation.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy slide deck to gh-pages/presentation
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: gh-pages
+          folder: docs/presentation
+          target-folder: presentation

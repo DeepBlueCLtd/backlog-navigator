@@ -44,6 +44,10 @@ jobs:
           target-folder: .
           # Preserve in-flight PR preview folders during main redeploys
           # (FR-014 — without this, deploys to main wipe pr-preview content).
+          # Also preserve the methodology slide deck published by
+          # deploy-presentation.yml, which lives outside the SPA build.
           clean-exclude: |
             previews
             previews/**
+            presentation
+            presentation/**

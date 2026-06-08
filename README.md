@@ -9,8 +9,9 @@ This repo hosts **two related things**:
    - **[`METHODOLOGY.md`](METHODOLOGY.md)** — the reference.
    - **[`docs/adopt-methodology.md`](docs/adopt-methodology.md)** —
      the how-to-adopt-it-in-your-repo walkthrough.
-   - **[Slide deck](docs/presentation/methodology-review.html)** —
-     pitch it to your team in 15 slides.
+   - **[Slide deck](https://DeepBlueCLtd.github.io/backlog-navigator/presentation/methodology-review.html)** —
+     pitch it to your team in 15 slides
+     ([source](docs/presentation/methodology-review.html)).
 
 2. **A standalone mobile-first PWA** ("the Backlog Navigator") for
    editing a markdown-based `BACKLOG.md` in any repo. Predates the
