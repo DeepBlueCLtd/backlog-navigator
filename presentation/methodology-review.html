@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Backlog Methodology — Review</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reset.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/theme/white.css">
+
+  <style>
+    .reveal { font-size: 28px; }
+    .reveal h1 { font-size: 2.2em; color: #1f2d5c; }
+    .reveal h2 { font-size: 1.4em; color: #1f2d5c; margin-bottom: 0.6em; }
+    .reveal h3 { font-size: 1.1em; color: #4a4a6a; }
+    .reveal table { font-size: 0.55em; border-collapse: collapse; margin: 0.4em auto; }
+    .reveal table th, .reveal table td {
+      padding: 0.3em 0.7em;
+      border-bottom: 1px solid #ddd;
+      text-align: left;
+    }
+    .reveal table th { background: #f0f2f8; color: #1f2d5c; }
+    .reveal ul, .reveal ol { font-size: 0.85em; }
+    .reveal ul li, .reveal ol li { margin: 0.25em 0; }
+    .reveal pre.mermaid {
+      background: transparent;
+      box-shadow: none;
+      text-align: center;
+      font-size: 0.85em;
+      width: 100%;
+      max-width: 100%;
+      margin: 0.3em auto;
+    }
+    .reveal pre.mermaid svg {
+      max-width: 100% !important;
+      max-height: 68vh !important;
+      width: auto !important;
+      height: auto !important;
+      display: block;
+      margin: 0 auto;
+    }
+    .reveal .footnote {
+      font-size: 0.55em;
+      color: #888;
+      margin-top: 0.8em;
+      font-style: italic;
+    }
+    .reveal .done    { color: #2a7a2a; }
+    .reveal .pending { color: #b06000; }
+    .reveal .subtle  { color: #888; }
+    .reveal code { color: #c0392b; font-size: 0.95em; }
+    .reveal .lead { font-size: 1.05em; color: #444; }
+    .reveal .center { text-align: center; }
+    .reveal .small { font-size: 0.65em; }
+  </style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- ============================================================== -->
+<section>
+  <h1>Backlog Methodology</h1>
+  <h3 class="subtle">Review &amp; state-of-play</h3>
+  <p class="lead">From a conflict-prone <code>BACKLOG.md</code> to a status-driven workflow on GitHub Issues + Projects + spec-kit.</p>
+  <p class="footnote">DeepBlueCLtd / backlog-navigator · PR #3 · 2026-05-16</p>
+</section>
+
+<!-- ============================================================== -->
+<section>
+  <h2>Where we started</h2>
+  <p class="lead">A version-controlled <code>BACKLOG.md</code> works… until parallel work touches it.</p>
+  <ul>
+    <li>Reorders, status changes, new items all collide on the same lines.</li>
+    <li>Two PRs in flight ⇒ guaranteed merge conflict on the backlog.</li>
+    <li>Every backlog tweak needs a code review, even when it has nothing to do with code.</li>
+    <li>The file fights against parallel work rather than for it.</li>
+  </ul>
+  <p class="footnote">Git is the right tool for source. It is the wrong tool for a live, multi-writer queue.</p>
+</section>
+
+<!-- ============================================================== -->
+<section>
+  <h2>Objectives</h2>
+  <ol>
+    <li><strong>Eliminate merge conflicts</strong> on backlog edits.</li>
+    <li><strong>Couple the backlog to native GitHub</strong> — sub-issues, assignees, linked PRs, mobile, search.</li>
+    <li><strong>Let status changes <em>drive</em> real work</strong>, not just label it.</li>
+    <li><strong>Keep infrastructure small</strong>; contracts clear; nothing forks the agent ecosystem.</li>
+  </ol>
+  <p class="footnote">A successful design is one where dragging a card from <em>Triage</em> to <em>In Design</em> means something happens.</p>
+</section>
+
+<!-- ============================================================== -->
+<section>
+  <h2>Strategy in one picture</h2>
+<pre class="mermaid">
+flowchart TB
+    subgraph driver [The driver]
+        LP["/loop 15m"]
+    end
+    subgraph orch [Orchestration - this repo]
+        BP["/backlog-poll"]
+    end
+    subgraph phases [Per-phase work - spec-kit]
+        SP["/speckit-specify"]
+        PL["/speckit-plan"]
+        TK["/speckit-tasks"]
+        TI["/speckit-taskstoissues"]
+        IM["/speckit-implement"]
+    end
+    subgraph gh [GitHub primitives]
+        PJ[Project board]
+        IS[Issues + sub-issues]
+        PRR[PRs]
+    end
+
+    LP --> BP
+    BP -->|reads Status + Phase| PJ
+    BP -->|writes Phase + Total| PJ
+    BP --> SP
+    BP --> PL
+    BP --> TK
+    BP --> TI
+    BP --> IM
+    SP --> PRR
+    TI --> IS
+    IM --> PRR
+</pre>
+  <p class="footnote">Four layers: driver → orchestrator → per-phase skills → GitHub. Each layer has a small, well-defined job.</p>
+</section>
+
+<!-- ============================================================== -->
+<section>
+  <h2>The state machine</h2>
+<pre class="mermaid">
+flowchart LR
+    T["Triage"]:::triage --> D["In Design"]:::design
+    D --> R["Ready"]:::ready
+    R --> O["Doing"]:::doing
+    O --> N["Done"]:::done
+
+    classDef triage fill:#e8e8e8,stroke:#888,color:#333
+    classDef design fill:#cfe2f3,stroke:#3b78a8,color:#1a3c5c
+    classDef ready  fill:#d9d2e9,stroke:#674ea7,color:#3d2a6a
+    classDef doing  fill:#fff2cc,stroke:#bf9000,color:#665300
+    classDef done   fill:#d9ead3,stroke:#38761d,color:#1f4710
+</pre>
+  <ul>
+    <li>Maintainers drag cards. External contributors only file.</li>
+    <li>Each transition has a contract (next slide).</li>
+    <li>The orchestrator is woken by status changes, not by code.</li>
+  </ul>
+</section>
+
+<!-- ============================================================== -->
+<section>
+  <h2>Project schema</h2>
+  <table>
+    <thead><tr><th>Field</th><th>Type</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Status</td><td>single-select</td><td>Maintainer-dragged: Triage / In Design / Ready / Doing / Done</td></tr>
+      <tr><td><strong>Phase</strong></td><td>single-select</td><td><strong>Orchestrator-maintained</strong>: Spec drafting → Plan drafting → Tasks drafting → (Decomposing) → Designed → Implementing</td></tr>
+      <tr><td><strong>Owner</strong></td><td>text</td><td><strong>Worker-claimed</strong>: e.g. <code>bn-swift-mango-7234</code>. Empty = unclaimed. Multiple workers cooperate via this field.</td></tr>
+      <tr><td>Category</td><td>single-select</td><td>Feature, Enhancement, Tech Debt, Bug, Documentation, Spike</td></tr>
+      <tr><td>Complexity</td><td>single-select</td><td>Low / Medium / High</td></tr>
+      <tr><td>V, M, A</td><td>numbers</td><td>3-dimensional priority score (0–5 each)</td></tr>
+      <tr><td>Total</td><td>number</td><td><strong>V + M + A</strong>, recomputed every tick</td></tr>
+    </tbody>
+  </table>
+  <p class="footnote">Public Project, one per repo. <strong>Status</strong> is the human kanban; <strong>Phase</strong> is the orchestrator's API-state source of truth — it stops re-triggers when a phase's work is sitting in an open PR.</p>
+</section>
+
+<!-- ============================================================== -->
+<section>
+  <h2>Trigger contracts</h2>
+  <p>What happens on each status change:</p>
+  <table>
+    <thead><tr><th>Transition</th><th>Skills invoked</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>→ <strong>In Design</strong></td>
+        <td><code>/speckit-specify</code> → <code>/speckit-clarify</code> (if ambiguous) → <code>/speckit-plan</code> → <code>/speckit-tasks</code></td>
+      </tr>
+      <tr>
+        <td>→ <strong>In Design</strong> (Epic only)</td>
+        <td>…then <code>/speckit-taskstoissues</code> to file each task as a sub-issue</td>
+      </tr>
+      <tr>
+        <td>→ <strong>Doing</strong></td>
+        <td><code>/speckit-implement</code></td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="footnote">Both transitions stop at <em>PR open</em>. Humans review spec and implementation content before merge. The agent saves typing, not judgement.</p>
+</section>
+
+<!-- ============================================================== -->
+<section>
+  <h2>The orchestration loop</h2>
+<pre class="mermaid">
+sequenceDiagram
+    participant L as Loop
+    participant P as Poll
+    participant GH as Project
+    participant SK as Phase
+    participant U as User
+
+    L->>P: tick (15min)
+    P->>P: scan locks
+    Note over P: skip if locked
+    P->>GH: fetch state
+    P->>GH: write Phase + Total
+    P->>P: pick item
+    P->>SK: run speckit
+    alt blocked
+        SK->>U: ask in chat
+        P->>P: write lock, exit
+    else completes
+        SK->>GH: open PR
+        P->>U: summary
+    end
+</pre>
+</section>
+
+<!-- ============================================================== -->
+<section>
+  <h2>One item's journey</h2>
+<pre class="mermaid">
+flowchart TB
+    A["Anyone files an issue (minimal template)"] --> B["Auto-added to Project as Triage"]
+    B --> C["Maintainer scores: Category, Complexity, V/M/A"]
+    C --> D["Drag → In Design"]
+    D --> E["/backlog-poll runs the design phases<br/>(specify → clarify? → plan → tasks)"]
+    E --> F["Design PR opens"]
+    F --> G["Maintainer reviews + merges"]
+    G --> H["Drag → Ready"]
+    H --> I["Drag → Doing (when capacity)"]
+    I --> J["/backlog-poll runs /speckit-implement"]
+    J --> K["Implementation PR opens"]
+    K --> L["Merge → issue closes → status auto-→ Done"]
+</pre>
+  <p class="footnote">All items go through <code>specify → clarify? → plan → tasks</code> in step E. Epics get one additional step — <code>taskstoissues</code> — that files each task as a sub-issue. Those sub-issues then flow through this same lifecycle.</p>
+</section>
+
+<!-- ============================================================== -->
+<section>
+  <h2>Lock-file safety</h2>
+  <p>How <code>/loop</code> avoids re-triggering when you're slow to answer:</p>
+<pre class="mermaid">
+sequenceDiagram
+    participant T1 as Tick #1
+    participant LF as .claude/in-flight/5.md
+    participant U as Maintainer
+    participant T2 as Tick #2 (15min later)
+
+    T1->>LF: write lock (committed on feature branch)
+    T1->>U: question in chat
+    Note over U: ...away from desk...
+    T2->>LF: scan for locks
+    LF-->>T2: lock for #5 exists
+    T2-->>T2: skip — no new work this tick
+    U->>T1: (eventually) answers
+    T1->>LF: delete lock
+    T1->>U: summary in chat
+</pre>
+  <p class="footnote">Locks are committed, so cloud-CC container restarts pick up exactly where the previous session left off.</p>
+</section>
+
+<!-- ============================================================== -->
+<section>
+  <h2>What we've built</h2>
+  <p>Everything below is on <strong>PR #3</strong>, ready for your review:</p>
+  <ul>
+    <li><span class="done">✓</span> <code>METHODOLOGY.md</code> — full methodology, 444 lines</li>
+    <li><span class="done">✓</span> <strong>spec-kit installed</strong> in this repo (<code>.claude/skills/speckit-*</code>, <code>.specify/</code>)</li>
+    <li><span class="done">✓</span> <code>/backlog-poll</code> skill at <code>.claude/skills/backlog-poll/SKILL.md</code></li>
+    <li><span class="done">✓</span> Migration runbook at <code>docs/migration/from-backlog-md.md</code></li>
+    <li><span class="done">✓</span> This presentation (<code>docs/presentation/</code>)</li>
+  </ul>
+  <p class="footnote">6 commits on <code>claude/backlog-github-discussions-a59Xw</code>. Zero impact on the existing navigator app — it still works during the transition.</p>
+</section>
+
+<!-- ============================================================== -->
+<section>
+  <h2>What's still ahead</h2>
+  <p>These steps are yours — they need GitHub credentials &amp; UI access:</p>
+  <ol>
+    <li><span class="done">✓</span> <strong>GitHub Project created</strong> at <code>orgs/DeepBlueCLtd/projects/4</code>.</li>
+    <li><span class="done">✓</span> <code>.claude/backlog-poll.config.json</code> pointing at Project #4.</li>
+    <li><span class="done">✓</span> <strong><code>Phase</code> field</strong> added to Project #4.</li>
+    <li><span class="pending">●</span> <strong>Add the <code>Owner</code> field</strong> (text) to Project #4 — needed for the worker-pool model.</li>
+    <li><span class="pending">●</span> <strong>Migrate the 9 dummy items</strong> from <code>BACKLOG.md</code> with Status + initial Phase (runbook step 7).</li>
+    <li><span class="pending">●</span> Archive <code>BACKLOG.md</code> (runbook step 9).</li>
+    <li><span class="pending">●</span> Open a Claude Code session &amp; run <code>/loop 15m /backlog-poll</code>.</li>
+    <li><span class="pending">●</span> <strong>Drag a card</strong> — see if the orchestrator picks it up.</li>
+    <li><span class="pending">●</span> Iterate on <code>/backlog-poll</code> based on what breaks.</li>
+  </ol>
+</section>
+
+<!-- ============================================================== -->
+<section>
+  <h2>Known limits we're shipping with</h2>
+  <ul>
+    <li><strong>Needs a live CC session</strong> running <code>/loop</code>. Cloud CC is the natural home.</li>
+    <li><strong>~15 min dispatch latency</strong>, bound by the loop interval.</li>
+    <li><strong>No native GitHub trigger</strong> for <code>project_v2_item.edited</code> — polling is the workaround.</li>
+    <li><strong>Speckit drift</strong>: pin to a release tag, re-init periodically, diff against your committed copies.</li>
+    <li><strong>Project state isn't reproducible from git</strong>. If you need backlog snapshots, render to a file on a schedule.</li>
+    <li><strong>Public Project on a private repo leaks titles</strong>. Check before flipping visibility.</li>
+  </ul>
+  <p class="footnote">Webhook-driven dispatch is possible later — methodology mentions it as a note. Not on the roadmap.</p>
+</section>
+
+<!-- ============================================================== -->
+<section>
+  <h2>Adopting in other repos</h2>
+  <p>Once we've validated here, the recipe for any other repo is short:</p>
+  <ol>
+    <li>Install spec-kit:
+      <pre class="small"><code>uv tool run --from git+https://github.com/github/spec-kit.git \
+    specify init . --integration claude --force</code></pre></li>
+    <li>Copy <code>.claude/skills/backlog-poll/SKILL.md</code> from this repo.</li>
+    <li>Follow the migration runbook (Project + fields + issues).</li>
+    <li>Write their <code>.claude/backlog-poll.config.json</code>.</li>
+    <li>Run <code>/loop 15m /backlog-poll</code> in a CC session.</li>
+  </ol>
+  <p class="footnote">This repo stays the canonical reference for the methodology.</p>
+</section>
+
+<!-- ============================================================== -->
+<section>
+  <h1>Next concrete step</h1>
+  <p class="lead center"><strong>Create the GitHub Project</strong> for <code>DeepBlueCLtd/backlog-navigator</code> and run the migration runbook on the 9 dummy items.</p>
+  <p class="center subtle">Then we have real data to point <code>/backlog-poll</code> at, and the testbed becomes live.</p>
+  <p class="footnote center">PR #3 is ready for your review meanwhile.</p>
+</section>
+
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5/dist/reveal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script>
+  mermaid.initialize({
+    startOnLoad: false,
+    theme: 'default',
+    flowchart: { htmlLabels: true, curve: 'basis', useMaxWidth: true },
+    sequence:  { actorMargin: 30, useMaxWidth: true, wrap: true, boxMargin: 8 }
+  });
+
+  Reveal.initialize({
+    hash: true,
+    slideNumber: 'c/t',
+    transition: 'slide',
+    width: 1280,
+    height: 800,
+    margin: 0.06
+  }).then(async () => {
+    await mermaid.run({ querySelector: 'pre.mermaid' });
+    fitMermaidSvgs();
+  });
+
+  function fitMermaidSvgs() {
+    document.querySelectorAll('pre.mermaid svg').forEach(svg => {
+      svg.removeAttribute('width');
+      svg.removeAttribute('height');
+      svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+      svg.style.maxWidth = '100%';
+      svg.style.maxHeight = '68vh';
+      svg.style.width = 'auto';
+      svg.style.height = 'auto';
+    });
+  }
+
+  // Re-render Mermaid on slide change if needed (some browsers re-paint oddly)
+  Reveal.on('slidechanged', async () => {
+    const unrendered = document.querySelectorAll('pre.mermaid:not([data-processed="true"])');
+    if (unrendered.length) {
+      await mermaid.run({ nodes: unrendered });
+    }
+    fitMermaidSvgs();
+  });
+</script>
+</body>
+</html>
