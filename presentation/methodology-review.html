@@ -228,18 +228,20 @@ sequenceDiagram
 <section>
   <h2>One item's journey</h2>
 <pre class="mermaid">
-flowchart TB
-    A["Anyone files an issue (minimal template)"] --> B["Auto-added to Project as Triage"]
-    B --> C["Maintainer scores: Category, Complexity, V/M/A"]
-    C --> D["Drag → In Design"]
-    D --> E["/backlog-poll runs the design phases<br/>(specify → clarify? → plan → tasks)"]
-    E --> F["Design PR opens"]
-    F --> G["Maintainer reviews + merges"]
-    G --> H["Drag → Ready"]
-    H --> I["Drag → Doing (when capacity)"]
-    I --> J["/backlog-poll runs /speckit-implement"]
-    J --> K["Implementation PR opens"]
-    K --> L["Merge → issue closes → status auto-→ Done"]
+flowchart LR
+    subgraph intake [Intake]
+      direction TB
+      A["Anyone files an issue<br/>(minimal template)"] --> B["Auto-added to<br/>Project as Triage"] --> C["Maintainer scores:<br/>Category · Complexity · V/M/A"]
+    end
+    subgraph design [Design phase]
+      direction TB
+      D["Drag → In Design"] --> E["/backlog-poll runs<br/>specify → clarify? → plan → tasks"] --> F["Design PR opens"] --> G["Maintainer reviews + merges"]
+    end
+    subgraph delivery [Delivery phase]
+      direction TB
+      H["Drag → Ready"] --> I["Drag → Doing<br/>(when capacity)"] --> J["/backlog-poll runs<br/>/speckit-implement"] --> K["Implementation PR opens"] --> L["Merge → issue closes,<br/>status auto-→ Done"]
+    end
+    intake --> design --> delivery
 </pre>
   <p class="footnote">All items go through <code>specify → clarify? → plan → tasks</code> in step E. Epics get one additional step — <code>taskstoissues</code> — that files each task as a sub-issue. Those sub-issues then flow through this same lifecycle.</p>
 </section>
