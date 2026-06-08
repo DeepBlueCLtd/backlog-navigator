@@ -357,10 +357,24 @@ sequenceDiagram
     width: 1280,
     height: 800,
     margin: 0.06
-  }).then(async () => {
-    await mermaid.run({ querySelector: 'pre.mermaid' });
+  }).then(renderCurrentSlide);
+
+  // Mermaid measures a diagram's layout from the DOM, so it must render a
+  // diagram only while that diagram's slide is visible. reveal.js sets
+  // display:none on off-screen slides; rendering everything up-front (or
+  // rendering far slides on slidechanged) measures a 0x0 box and produces
+  // mermaid's error graphic instead. So render lazily, scoped to the slide
+  // that is currently on screen, and only the not-yet-processed diagrams.
+  async function renderCurrentSlide() {
+    const cur = Reveal.getCurrentSlide();
+    if (cur) {
+      const nodes = cur.querySelectorAll('pre.mermaid:not([data-processed="true"])');
+      if (nodes.length) await mermaid.run({ nodes: [...nodes] });
+    }
     fitMermaidSvgs();
-  });
+  }
+
+  Reveal.on('slidechanged', renderCurrentSlide);
 
   function fitMermaidSvgs() {
     document.querySelectorAll('pre.mermaid svg').forEach(svg => {
@@ -373,15 +387,6 @@ sequenceDiagram
       svg.style.height = 'auto';
     });
   }
-
-  // Re-render Mermaid on slide change if needed (some browsers re-paint oddly)
-  Reveal.on('slidechanged', async () => {
-    const unrendered = document.querySelectorAll('pre.mermaid:not([data-processed="true"])');
-    if (unrendered.length) {
-      await mermaid.run({ nodes: unrendered });
-    }
-    fitMermaidSvgs();
-  });
 </script>
 </body>
 </html>
